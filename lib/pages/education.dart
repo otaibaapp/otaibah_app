@@ -165,7 +165,7 @@ class _EducationState extends State<Education>
                             7.0,
                           ), // تحديد نصف قطر الدوران
                         ),
-                        // إضافة الـ elevation يعطي تأثير الظل
+                        //  الـ elevation يعطي تأثير الظل
                         elevation: 0,
                         child: TextButton(
                           onPressed: () {},
