@@ -1,5 +1,4 @@
 import 'package:firebase_database/firebase_database.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -140,7 +139,7 @@ class _EducationState extends State<Education>
                     ],
                   ),
                 ),
-                Padding(
+                /*Padding(
                   padding: const EdgeInsets.all(8.0),
                   child: TextField(
                     decoration: InputDecoration(
@@ -176,8 +175,7 @@ class _EducationState extends State<Education>
                   ),
                 ),
 
-                const SizedBox(height: 8),
-
+                const SizedBox(height: 8),*/
                 // القائمة العمودية (ListView.builder)
                 ListView.builder(
                   // خصائص لمنع تضارب التمرير

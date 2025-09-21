@@ -1,5 +1,4 @@
 import 'package:firebase_database/firebase_database.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -16,8 +15,8 @@ class _OpenSouqState extends State<OpenSouq>
     with SingleTickerProviderStateMixin {
   final TextEditingController _searchController = TextEditingController();
   String a = "aaa";
-  double get iconWidth => MediaQuery.sizeOf(context).width / 75;
-  double get iconHeight => MediaQuery.sizeOf(context).height / 75;
+  double get iconWidth => MediaQuery.sizeOf(context).width / 65;
+  double get iconHeight => MediaQuery.sizeOf(context).height / 65;
   int indexSelected = 0;
   final String firebaseKey = 'otaibah_navigators_taps';
   void displaySnackBar(String msg, Color color) {
@@ -31,13 +30,12 @@ class _OpenSouqState extends State<OpenSouq>
   );
   Future<void> _launchURL(String urlString) async {
     final Uri url = Uri.parse(urlString);
-    if (!await launchUrl(url)) {
+    if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
       displaySnackBar(' حدث خطأ ما  $url', Colors.red);
       throw Exception('Could not launch $url');
     }
   }
 
-  bool _isLoading = true;
   // قائمة لحفظ البيانات
   List<Map<dynamic, dynamic>> _itemsList = [];
 
@@ -45,20 +43,24 @@ class _OpenSouqState extends State<OpenSouq>
 
   void _getDataFromFirebase() {
     // الاستماع للتغييرات في قاعدة البيانات
-    _databaseRef.child('orders').onValue.listen((event) {
-      if (event.snapshot.value != null) {
-        final Map<dynamic, dynamic> data =
-            event.snapshot.value as Map<dynamic, dynamic>;
-        _itemsList.clear();
-        data.forEach((key, value) {
-          _itemsList.add(value);
+    _databaseRef
+        .child('open_souq')
+        .child('categories')
+        .child('general')
+        .onValue
+        .listen((event) {
+          if (event.snapshot.value != null) {
+            final Map<dynamic, dynamic> data =
+                event.snapshot.value as Map<dynamic, dynamic>;
+            _itemsList.clear();
+            data.forEach((key, value) {
+              _itemsList.add(value);
+            });
+            setState(() {
+              a = (_itemsList.length).toString();
+            });
+          }
         });
-        setState(() {
-          a = (_itemsList.length).toString();
-          _isLoading = false;
-        });
-      }
-    });
   }
 
   List<String> _filteredItems = [];
@@ -137,7 +139,8 @@ class _OpenSouqState extends State<OpenSouq>
                     ],
                   ),
                 ),
-                Padding(
+
+                /*Padding(
                   padding: const EdgeInsets.all(8.0),
                   child: TextField(
                     decoration: InputDecoration(
@@ -162,7 +165,7 @@ class _OpenSouqState extends State<OpenSouq>
                             7.0,
                           ), // تحديد نصف قطر الدوران
                         ),
-                        // إضافة الـ elevation يعطي تأثير الظل
+                        //  الـ elevation يعطي تأثير الظل
                         elevation: 0,
                         child: TextButton(
                           onPressed: () {},
@@ -173,118 +176,255 @@ class _OpenSouqState extends State<OpenSouq>
                   ),
                 ),
 
-                // مساحة فاصلة
-                const SizedBox(height: 8),
-
+                const SizedBox(height: 8),*/
                 // القائمة العمودية (ListView.builder)
-                ListView.builder(
+                GridView.builder(
+                  itemCount: _itemsList.length,
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 3,
+                    crossAxisSpacing: 10,
+                    mainAxisSpacing: 10,
+                    childAspectRatio:
+                        1, // العرض إلى الارتفاع (اضبطه حسب التصميم)
+                  ),
+                  itemBuilder: (context, index) {
+                    return Column(
+                      children: [
+                        Row(
+                          children: [
+                            SizedBox(
+                              width: iconWidth * 8,
+                              height: iconWidth * 8,
+                              child: CircleAvatar(
+                                radius: 4,
+                                backgroundImage: NetworkImage(
+                                  _itemsList.elementAt(index)['sourceImageUrl'],
+                                ),
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.all(1.0),
+                              child: Column(
+                                children: [
+                                  Text(
+                                    _itemsList.elementAt(index)['source'],
+                                    style: TextStyle(
+                                      fontSize:
+                                          MediaQuery.sizeOf(context).height /
+                                          50,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  Text(
+                                    _itemsList.elementAt(index)['dateOfPost'],
+                                    style: TextStyle(
+                                      fontSize:
+                                          MediaQuery.sizeOf(context).height /
+                                          75,
+                                      fontWeight: FontWeight.normal,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 8),
+                        Text(_itemsList.elementAt(index)['content']),
+                        SizedBox(height: 8),
+                        if (_itemsList.elementAt(index)['contentImgUrl'] != '')
+                          Image.network(
+                            _itemsList.elementAt(index)['contentImgUrl'],
+                          ),
+                        SizedBox(height: 20),
+                        Padding(
+                          padding: EdgeInsets.all(8),
+                          child: Row(
+                            children: [
+                              if (_itemsList.elementAt(
+                                    index,
+                                  )['buttonContentUrl'] !=
+                                  '')
+                                TextButton.icon(
+                                  onPressed: () {
+                                    _launchURL(
+                                      _itemsList.elementAt(
+                                        index,
+                                      )['buttonContentUrl'],
+                                    );
+                                  },
+                                  style: ButtonStyle(
+                                    foregroundColor:
+                                        WidgetStateProperty.all<Color>(
+                                          Colors.white,
+                                        ),
+                                    backgroundColor:
+                                        WidgetStateProperty.all<Color>(
+                                          Color(0xFF988561),
+                                        ),
+                                  ),
+                                  label: Text(
+                                    _itemsList.elementAt(
+                                      index,
+                                    )['buttonContent'],
+                                  ),
+                                  icon: SvgPicture.asset(
+                                    'assets/svg/link_post_icon.svg',
+                                    width: iconWidth - iconWidth / 6,
+                                    height: iconHeight - iconHeight / 6,
+                                  ),
+                                ),
+                              Spacer(),
+                              SvgPicture.asset(
+                                'assets/svg/share_post_icon.svg',
+                                width: iconWidth,
+                                height: iconHeight,
+                              ),
+                              SizedBox(width: 12),
+                              Text(
+                                _itemsList
+                                    .elementAt(index)['numberOfComments']
+                                    .toString(),
+                              ),
+                              SizedBox(width: 8),
+                              SvgPicture.asset(
+                                'assets/svg/comment_like_icon.svg',
+                                width: iconWidth,
+                                height: iconHeight,
+                              ),
+                              SizedBox(width: 12),
+                              Text(
+                                _itemsList
+                                    .elementAt(index)['numberOfLoved']
+                                    .toString(),
+                                style: TextStyle(color: Colors.black),
+                              ),
+                              SizedBox(width: 8),
+                              SvgPicture.asset(
+                                'assets/svg/empty_like_icon.svg',
+                                width: iconWidth,
+                                height: iconHeight,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+
+                /*ListView.builder(
                   // خصائص لمنع تضارب التمرير
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
                   itemCount: _itemsList.length,
                   itemBuilder: (context, index) {
                     final item = _itemsList[index];
-                    return Card(
-                      margin: const EdgeInsets.all(8.0),
-                      child: Column(
-                        children: [
-                          Row(
-                            children: [
-                              CircleAvatar(
-                                radius: 20,
+                    return Column(
+                      children: [
+                        Row(
+                          children: [
+                            SizedBox(
+                              width: iconWidth * 8,
+                              height: iconWidth * 8,
+                              child: CircleAvatar(
+                                radius: 4,
                                 backgroundImage: NetworkImage(
                                   item['sourceImageUrl'],
                                 ),
                               ),
-                              Padding(
-                                padding: const EdgeInsets.all(1.0),
-                                child: Column(
-                                  children: [
-                                    Text(
-                                      item['source'],
-                                      style: TextStyle(
-                                        fontSize:
-                                            MediaQuery.sizeOf(context).height /
-                                            50,
-                                        fontWeight: FontWeight.bold,
-                                      ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.all(1.0),
+                              child: Column(
+                                children: [
+                                  Text(
+                                    item['source'],
+                                    style: TextStyle(
+                                      fontSize:
+                                          MediaQuery.sizeOf(context).height /
+                                          50,
+                                      fontWeight: FontWeight.bold,
                                     ),
-                                    Text(
-                                      item['dateOfPost'],
-                                      style: TextStyle(
-                                        fontSize:
-                                            MediaQuery.sizeOf(context).height /
-                                            75,
-                                        fontWeight: FontWeight.normal,
-                                      ),
+                                  ),
+                                  Text(
+                                    item['dateOfPost'],
+                                    style: TextStyle(
+                                      fontSize:
+                                          MediaQuery.sizeOf(context).height /
+                                          75,
+                                      fontWeight: FontWeight.normal,
                                     ),
-                                  ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 8),
+                        Text(item['content']),
+                        SizedBox(height: 8),
+                        if (item['contentImgUrl'] != '')
+                          Image.network(item['contentImgUrl']),
+                        SizedBox(height: 20),
+                        Padding(
+                          padding: EdgeInsets.all(8),
+                          child: Row(
+                            children: [
+                              if (item['buttonContentUrl'] != '')
+                                TextButton.icon(
+                                  onPressed: () {
+                                    _launchURL(item['buttonContentUrl']);
+                                  },
+                                  style: ButtonStyle(
+                                    foregroundColor:
+                                        WidgetStateProperty.all<Color>(
+                                          Colors.white,
+                                        ),
+                                    backgroundColor:
+                                        WidgetStateProperty.all<Color>(
+                                          Color(0xFF988561),
+                                        ),
+                                  ),
+                                  label: Text(item['buttonContent']),
+                                  icon: SvgPicture.asset(
+                                    'assets/svg/link_post_icon.svg',
+                                    width: iconWidth - iconWidth / 6,
+                                    height: iconHeight - iconHeight / 6,
+                                  ),
                                 ),
+                              Spacer(),
+                              SvgPicture.asset(
+                                'assets/svg/share_post_icon.svg',
+                                width: iconWidth,
+                                height: iconHeight,
+                              ),
+                              SizedBox(width: 12),
+                              Text(item['numberOfComments'].toString()),
+                              SizedBox(width: 8),
+                              SvgPicture.asset(
+                                'assets/svg/comment_like_icon.svg',
+                                width: iconWidth,
+                                height: iconHeight,
+                              ),
+                              SizedBox(width: 12),
+                              Text(
+                                item['numberOfLoved'].toString(),
+                                style: TextStyle(color: Colors.black),
+                              ),
+                              SizedBox(width: 8),
+                              SvgPicture.asset(
+                                'assets/svg/empty_like_icon.svg',
+                                width: iconWidth,
+                                height: iconHeight,
                               ),
                             ],
                           ),
-                          SizedBox(height: 8),
-                          Text(item['content']),
-                          SizedBox(height: 8),
-                          if (item['contentImgUrl'] != '')
-                            Image.network(item['contentImgUrl']),
-                          SizedBox(height: 20),
-                          Padding(
-                            padding: EdgeInsets.all(8),
-                            child: Row(
-                              children: [
-                                if (item['buttonContentUrl'] != '')
-                                  TextButton.icon(
-                                    onPressed: () {},
-                                    style: ButtonStyle(
-                                      foregroundColor:
-                                          WidgetStateProperty.all<Color>(
-                                            Colors.white,
-                                          ),
-                                      backgroundColor:
-                                          WidgetStateProperty.all<Color>(
-                                            Color(0xFF988561),
-                                          ),
-                                    ),
-                                    label: Text(item['buttonContent']),
-                                    icon: SvgPicture.asset(
-                                      'assets/svg/link_post_icon.svg',
-                                      width: iconWidth - iconWidth / 6,
-                                      height: iconHeight - iconHeight / 6,
-                                    ),
-                                  ),
-                                Spacer(),
-
-                                SvgPicture.asset(
-                                  'assets/svg/share_post_icon.svg',
-                                  width: iconWidth,
-                                  height: iconHeight,
-                                ),
-                                SizedBox(width: 8),
-                                Text(item['numberOfComments'].toString()),
-                                SvgPicture.asset(
-                                  'assets/svg/comment_like_icon.svg',
-                                  width: iconWidth,
-                                  height: iconHeight,
-                                ),
-                                SizedBox(width: 8),
-                                Text(
-                                  item['numberOfLoved'].toString(),
-                                  style: TextStyle(color: Colors.black),
-                                ),
-                                SvgPicture.asset(
-                                  'assets/svg/empty_like_icon.svg',
-                                  width: iconWidth,
-                                  height: iconHeight,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
+                        ),
+                      ],
                     );
                   },
-                ),
+                ),*/
               ],
             ),
           ),

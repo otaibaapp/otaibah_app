@@ -24,9 +24,9 @@ class _DashboardState extends State<Dashboard>
   TabController? controller;
   int indexSelected = 0;
   List<String> navigation_menu_items = [
-    'ads',
-    'shop',
-    'orders',
+    'announcements',
+    'shopping',
+    'open_souq',
     'services',
     'education',
     'donations',
@@ -139,7 +139,7 @@ class _DashboardState extends State<Dashboard>
                 BlendMode.srcIn,
               ),
             ),
-            label: "اونلاين",
+            label: "التسوق",
           ),
           BottomNavigationBarItem(
             icon: SvgPicture.asset(
