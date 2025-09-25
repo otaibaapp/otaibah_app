@@ -24,7 +24,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'RTL App',
+      title: 'العتيبة',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         fontFamily: 'Qomra', // 👈 هنا عيّنا الخط الافتراضي
