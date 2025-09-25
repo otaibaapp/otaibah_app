@@ -17,21 +17,20 @@ class _AnnouncementsState extends State<Announcements>
     with SingleTickerProviderStateMixin {
   List<String> imageUrls = [];
   bool loading = true;
-  String a = "aaa";
   double get iconWidth => MediaQuery.sizeOf(context).width / 75;
   double get iconHeight => MediaQuery.sizeOf(context).height / 75;
-  int indexSelected = 0;
-  final String firebaseKey = 'otaibah_navigators_taps';
+
+  final TextEditingController _searchController = TextEditingController();
+  List<Map<dynamic, dynamic>> _itemsList = [];
+  List<Map<dynamic, dynamic>> _filteredList = [];
+
+  final DatabaseReference _databaseRef =
+  FirebaseDatabase.instance.ref('otaibah_navigators_taps');
 
   void displaySnackBar(String msg, Color color) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(msg), backgroundColor: color));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(msg), backgroundColor: color));
   }
-
-  final DatabaseReference _databaseRef = FirebaseDatabase.instance.ref(
-    'otaibah_navigators_taps',
-  );
 
   Future<void> _launchURL(String urlString) async {
     final Uri url = Uri.parse(urlString);
@@ -40,8 +39,6 @@ class _AnnouncementsState extends State<Announcements>
       throw Exception('لم يتم تحميل الرابط بسبب الخطأ:  $url');
     }
   }
-
-  final List<Map<dynamic, dynamic>> _itemsList = [];
 
   void _getDataFromFirebase() {
     _databaseRef
@@ -58,7 +55,7 @@ class _AnnouncementsState extends State<Announcements>
           _itemsList.add(value);
         });
         setState(() {
-          a = (_itemsList.length).toString();
+          _filteredList = _itemsList;
         });
       }
     });
@@ -69,6 +66,29 @@ class _AnnouncementsState extends State<Announcements>
     super.initState();
     _getDataFromFirebase();
     loadImages();
+    _searchController.addListener(() {
+      _filterItems(_searchController.text);
+    });
+  }
+
+  void _filterItems(String query) {
+    setState(() {
+      if (query.isEmpty) {
+        _filteredList = _itemsList;
+      } else {
+        _filteredList = _itemsList
+            .where((item) =>
+        item['content']
+            .toString()
+            .toLowerCase()
+            .contains(query.toLowerCase()) ||
+            item['source']
+                .toString()
+                .toLowerCase()
+                .contains(query.toLowerCase()))
+            .toList();
+      }
+    });
   }
 
   void loadImages() async {
@@ -81,6 +101,7 @@ class _AnnouncementsState extends State<Announcements>
 
   @override
   void dispose() {
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -91,10 +112,8 @@ class _AnnouncementsState extends State<Announcements>
         .child('navigation_menu_items')
         .child('orders');
     final listResult = await storageRef.listAll();
-
-    final urls = await Future.wait(
-      listResult.items.map((item) => item.getDownloadURL()),
-    );
+    final urls =
+    await Future.wait(listResult.items.map((item) => item.getDownloadURL()));
     return urls;
   }
 
@@ -105,7 +124,6 @@ class _AnnouncementsState extends State<Announcements>
         child: Directionality(
           textDirection: TextDirection.rtl,
           child: SingleChildScrollView(
-            scrollDirection: Axis.vertical,
             child: Column(
               children: [
                 const SizedBox(height: 4),
@@ -122,23 +140,18 @@ class _AnnouncementsState extends State<Announcements>
                   items: imageUrls.map((url) {
                     return Builder(
                       builder: (BuildContext context) {
-                        return GestureDetector(
-                          onTap: () {
-                            displaySnackBar('تم الضغط', Colors.green);
-                          },
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(7),
-                            child: Image.network(
-                              url,
-                              fit: BoxFit.cover,
-                              width: MediaQuery.of(context).size.width,
-                              loadingBuilder: (context, child, progress) {
-                                if (progress == null) return child;
-                                return const Center(
-                                  child: CircularProgressIndicator(),
-                                );
-                              },
-                            ),
+                        return ClipRRect(
+                          borderRadius: BorderRadius.circular(7),
+                          child: Image.network(
+                            url,
+                            fit: BoxFit.cover,
+                            width: MediaQuery.of(context).size.width,
+                            loadingBuilder: (context, child, progress) {
+                              if (progress == null) return child;
+                              return const Center(
+                                child: CircularProgressIndicator(),
+                              );
+                            },
                           ),
                         );
                       },
@@ -148,16 +161,34 @@ class _AnnouncementsState extends State<Announcements>
 
                 const SizedBox(height: 8),
 
+                // ==== مربع البحث
+                Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: TextField(
+                    controller: _searchController,
+                    decoration: InputDecoration(
+                      filled: true,
+                      fillColor: Colors.grey[100],
+                      hintText: "عن ماذا تبحث...",
+                      prefixIcon: const Icon(Icons.search, color: Colors.black38),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                  ),
+                ),
+
                 // ==== المنشورات
                 ListView.builder(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
-                  itemCount: _itemsList.length,
+                  itemCount: _filteredList.length,
                   itemBuilder: (context, index) {
-                    final item = _itemsList[index];
+                    final item = _filteredList[index];
                     return Card(
-                      margin: const EdgeInsets.symmetric(
-                          horizontal: 0, vertical: 3),
+                      margin:
+                      const EdgeInsets.symmetric(horizontal: 0, vertical: 3),
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(7)),
                       clipBehavior: Clip.antiAlias,
@@ -185,8 +216,7 @@ class _AnnouncementsState extends State<Announcements>
                                       Text(
                                         item['source'],
                                         style: TextStyle(
-                                          fontSize:
-                                          MediaQuery.sizeOf(context)
+                                          fontSize: MediaQuery.sizeOf(context)
                                               .height /
                                               50,
                                           fontWeight: FontWeight.w500,
@@ -196,12 +226,10 @@ class _AnnouncementsState extends State<Announcements>
                                       Text(
                                         item['dateOfPost'],
                                         style: TextStyle(
-                                          fontSize:
-                                          MediaQuery.sizeOf(context)
+                                          fontSize: MediaQuery.sizeOf(context)
                                               .height /
                                               75,
                                           color: Colors.black54,
-                                          fontWeight: FontWeight.normal,
                                         ),
                                       ),
                                     ],
@@ -240,7 +268,7 @@ class _AnnouncementsState extends State<Announcements>
 
                           const SizedBox(height: 12),
 
-                          // ===== صورة المحتوى (مع زووم وأنيميشن سلس)
+                          // ===== صورة المحتوى مع كل المزايا
                           if (item['contentImgUrl'] != '')
                             Padding(
                               padding:
@@ -250,33 +278,51 @@ class _AnnouncementsState extends State<Announcements>
                                   Navigator.push(
                                     context,
                                     PageRouteBuilder(
-                                      transitionDuration: const Duration(milliseconds: 300),
-                                      pageBuilder: (_, __, ___) => Scaffold(
-                                        backgroundColor: Colors.black,
-                                        appBar: AppBar(
-                                          backgroundColor: Colors.black.withOpacity(0.3),
-                                          elevation: 0,
-                                          leading: IconButton(
-                                            icon: const Icon(Icons.arrow_back, color: Colors.white),
-                                            onPressed: () => Navigator.pop(context),
+                                      opaque: false,
+                                      transitionDuration:
+                                      const Duration(milliseconds: 300),
+                                      pageBuilder: (_, __, ___) => GestureDetector(
+                                        onVerticalDragUpdate: (details) {
+                                          if (details.primaryDelta! > 20 ||
+                                              details.primaryDelta! < -20) {
+                                            Navigator.pop(context);
+                                          }
+                                        },
+                                        onTap: () {
+                                          Navigator.pop(context);
+                                        },
+                                        child: Scaffold(
+                                          backgroundColor: Colors.black,
+                                          appBar: AppBar(
+                                            backgroundColor:
+                                            Colors.black.withOpacity(0.3),
+                                            elevation: 0,
+                                            leading: IconButton(
+                                              icon: const Icon(Icons.arrow_back,
+                                                  color: Colors.white),
+                                              onPressed: () =>
+                                                  Navigator.pop(context),
+                                            ),
                                           ),
-                                        ),
-                                        body: Center(
-                                          child: Hero(
-                                            tag: item['contentImgUrl'],
-                                            child: InteractiveViewer(
-                                              panEnabled: true,
-                                              minScale: 0.5,
-                                              maxScale: 4.0,
-                                              child: Image.network(
-                                                item['contentImgUrl'],
-                                                fit: BoxFit.contain,
+                                          body: Center(
+                                            child: Hero(
+                                              tag: item['contentImgUrl'],
+                                              child: InteractiveViewer(
+                                                panEnabled: true,
+                                                minScale: 0.5,
+                                                maxScale: 4.0,
+                                                child: Image.network(
+                                                  item['contentImgUrl'],
+                                                  fit: BoxFit.contain,
+                                                  width: double.infinity,
+                                                  height: double.infinity,
+                                                ),
                                               ),
                                             ),
                                           ),
                                         ),
                                       ),
-                                  ),
+                                    ),
                                   );
                                 },
                                 child: Hero(
@@ -292,8 +338,9 @@ class _AnnouncementsState extends State<Announcements>
                                         return const SizedBox(
                                           height: 160,
                                           child: Center(
-                                              child:
-                                              CircularProgressIndicator()),
+                                            child:
+                                            CircularProgressIndicator(),
+                                          ),
                                         );
                                       },
                                       errorBuilder: (_, __, ___) =>
@@ -306,11 +353,11 @@ class _AnnouncementsState extends State<Announcements>
 
                           const SizedBox(height: 12),
 
-                          // ===== زر الرابط (اختياري)
+                          // ===== زر الرابط
                           if (item['buttonContentUrl'] != '')
                             Padding(
-                              padding:
-                              const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                              padding: const EdgeInsets.fromLTRB(
+                                  12, 0, 12, 12),
                               child: Row(
                                 children: [
                                   TextButton.icon(
@@ -323,8 +370,8 @@ class _AnnouncementsState extends State<Announcements>
                                       backgroundColor:
                                       WidgetStateProperty.all<Color>(
                                           const Color(0xFF988561)),
-                                      padding: WidgetStateProperty.all<
-                                          EdgeInsets>(
+                                      padding:
+                                      WidgetStateProperty.all<EdgeInsets>(
                                         const EdgeInsets.symmetric(
                                             horizontal: 12, vertical: 8),
                                       ),
