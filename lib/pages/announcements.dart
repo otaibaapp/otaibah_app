@@ -159,12 +159,12 @@ class _AnnouncementsState extends State<Announcements>
 
                 // ==== مربع البحث
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 0),
                   child: TextField(
                     controller: _searchController,
                     decoration: InputDecoration(
                       filled: true,
-                      fillColor: Colors.grey[100],
+                      fillColor: Color(0x20a7a9ac),
                       hintText: "عن ماذا تبحث...",
                       prefixIcon: const Icon(Icons.search, color: Colors.black38),
                       border: OutlineInputBorder(
