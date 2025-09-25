@@ -15,7 +15,6 @@ class Announcements extends StatefulWidget {
 
 class _AnnouncementsState extends State<Announcements>
     with SingleTickerProviderStateMixin {
-  //final TextEditingController _searchController = TextEditingController();
   List<String> imageUrls = [];
   bool loading = true;
   String a = "aaa";
@@ -23,6 +22,7 @@ class _AnnouncementsState extends State<Announcements>
   double get iconHeight => MediaQuery.sizeOf(context).height / 75;
   int indexSelected = 0;
   final String firebaseKey = 'otaibah_navigators_taps';
+
   void displaySnackBar(String msg, Color color) {
     ScaffoldMessenger.of(
       context,
@@ -32,6 +32,7 @@ class _AnnouncementsState extends State<Announcements>
   final DatabaseReference _databaseRef = FirebaseDatabase.instance.ref(
     'otaibah_navigators_taps',
   );
+
   Future<void> _launchURL(String urlString) async {
     final Uri url = Uri.parse(urlString);
     if (!await launchUrl(url)) {
@@ -40,41 +41,32 @@ class _AnnouncementsState extends State<Announcements>
     }
   }
 
-  //bool _isLoading = true;
-  // قائمة لحفظ البيانات
   final List<Map<dynamic, dynamic>> _itemsList = [];
 
-  // دالة لإضافة عنصر جديد
-
   void _getDataFromFirebase() {
-    // الاستماع للتغييرات في قاعدة البيانات
     _databaseRef
         .child('announcements')
         .child('categories')
         .child('general')
         .onValue
         .listen((event) {
-          if (event.snapshot.value != null) {
-            final Map<dynamic, dynamic> data =
-                event.snapshot.value as Map<dynamic, dynamic>;
-            _itemsList.clear();
-            data.forEach((key, value) {
-              _itemsList.add(value);
-            });
-            setState(() {
-              a = (_itemsList.length).toString();
-              //_isLoading = false;
-            });
-          }
+      if (event.snapshot.value != null) {
+        final Map<dynamic, dynamic> data =
+        event.snapshot.value as Map<dynamic, dynamic>;
+        _itemsList.clear();
+        data.forEach((key, value) {
+          _itemsList.add(value);
         });
+        setState(() {
+          a = (_itemsList.length).toString();
+        });
+      }
+    });
   }
 
-  //List<String> _filteredItems = [];
   @override
   void initState() {
     super.initState();
-    //_filteredItems = _allItems;
-    //_searchController.addListener(_filterItems);
     _getDataFromFirebase();
     loadImages();
   }
@@ -87,25 +79,11 @@ class _AnnouncementsState extends State<Announcements>
     });
   }
 
-  /* Future<void> saveLoginStatus(bool isLoggedIn) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('isEmailVerified', isLoggedIn);
-  }*/
-
   @override
   void dispose() {
-    //_searchController.dispose();
     super.dispose();
   }
 
-  /*void _filterItems() {
-    final query = _searchController.text.toLowerCase();
-    setState(() {
-      _filteredItems = _allItems.where((item) {
-        return item.toLowerCase().contains(query);
-      }).toList();
-    });
-  }*/
   Future<List<String>> fetchImages() async {
     final storageRef = FirebaseStorage.instance
         .ref()
@@ -114,7 +92,6 @@ class _AnnouncementsState extends State<Announcements>
         .child('orders');
     final listResult = await storageRef.listAll();
 
-    // تحويل الملفات إلى روابط تحميل
     final urls = await Future.wait(
       listResult.items.map((item) => item.getDownloadURL()),
     );
@@ -131,15 +108,16 @@ class _AnnouncementsState extends State<Announcements>
             scrollDirection: Axis.vertical,
             child: Column(
               children: [
-                SizedBox(height: 4),
+                const SizedBox(height: 4),
 
+                // ==== البانر
                 CarouselSlider(
                   options: CarouselOptions(
-                    height: 100, // ارتفاع السلايدر
-                    autoPlay: true, // تشغيل تلقائي
-                    autoPlayInterval: const Duration(seconds: 5), // كل 4 ثواني
-                    enlargeCenterPage: true, // تكبير الصورة النشطة قليلاً
-                    viewportFraction: 1.0, // يعرض صورة واحدة فقط
+                    height: 150,
+                    autoPlay: true,
+                    autoPlayInterval: const Duration(seconds: 5),
+                    enlargeCenterPage: true,
+                    viewportFraction: 1.0,
                   ),
                   items: imageUrls.map((url) {
                     return Builder(
@@ -149,14 +127,14 @@ class _AnnouncementsState extends State<Announcements>
                             displaySnackBar('تم الضغط', Colors.green);
                           },
                           child: ClipRRect(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(7),
                             child: Image.network(
                               url,
                               fit: BoxFit.cover,
                               width: MediaQuery.of(context).size.width,
                               loadingBuilder: (context, child, progress) {
                                 if (progress == null) return child;
-                                return Center(
+                                return const Center(
                                   child: CircularProgressIndicator(),
                                 );
                               },
@@ -168,157 +146,206 @@ class _AnnouncementsState extends State<Announcements>
                   }).toList(),
                 ),
 
-                /*Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: TextField(
-                    decoration: InputDecoration(
-                      hintText: "عن ماذا تبحث؟",
-                      icon: Icon(CupertinoIcons.search),
-                    ),
-                  ),
-                ),
-                SizedBox(
-                  height: 45, // حدد ارتفاع للقائمة الأفقية
-                  child: ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    // خصائص لمنع تضارب التمرير
-                    shrinkWrap: true,
-                    physics:
-                        const ClampingScrollPhysics(), // يسمح بالتمرير الأفقي
-                    itemCount: 100,
-                    itemBuilder: (context, index) {
-                      return Card(
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(
-                            7.0,
-                          ), // تحديد نصف قطر الدوران
-                        ),
-                        // إضافة الـ elevation يعطي تأثير الظل
-                        elevation: 0,
-                        child: TextButton(
-                          onPressed: () {},
-                          child: Text(index.toString()),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-*/
-                // مساحة فاصلة
                 const SizedBox(height: 8),
 
-                // القائمة العمودية (ListView.builder)
+                // ==== المنشورات
                 ListView.builder(
-                  // خصائص لمنع تضارب التمرير
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
                   itemCount: _itemsList.length,
                   itemBuilder: (context, index) {
                     final item = _itemsList[index];
                     return Card(
-                      margin: const EdgeInsets.all(8.0),
+                      margin: const EdgeInsets.symmetric(
+                          horizontal: 0, vertical: 3),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(7)),
+                      clipBehavior: Clip.antiAlias,
+                      elevation: 0,
                       child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Row(
-                            children: [
-                              CircleAvatar(
-                                radius: 20,
-                                backgroundImage: NetworkImage(
-                                  item['sourceImageUrl'],
-                                ),
-                              ),
-                              Padding(
-                                padding: const EdgeInsets.all(1.0),
-                                child: Column(
-                                  children: [
-                                    Text(
-                                      item['source'],
-                                      style: TextStyle(
-                                        fontSize:
-                                            MediaQuery.sizeOf(context).height /
-                                            50,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                    Text(
-                                      item['dateOfPost'],
-                                      style: TextStyle(
-                                        fontSize:
-                                            MediaQuery.sizeOf(context).height /
-                                            75,
-                                        fontWeight: FontWeight.normal,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Spacer(),
-                              IconButton(
-                                onPressed: () => Share.share(
-                                  item['content'] +
-                                      '\n' +
-                                      'تمت مشاركة المنشور من تطبيق العتيبة..يمكنك تنزيله مجانا من الرابط www.google.com',
-                                  subject: 'تطبيق رائع',
-                                ),
-                                icon: SvgPicture.asset(
-                                  'assets/svg/share_post_icon.svg',
-                                  width: iconWidth * 3,
-                                  height: iconWidth * 3,
-                                ),
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: 8),
-                          Text(item['content']),
-                          SizedBox(height: 8),
-                          if (item['contentImgUrl'] != '')
-                            Image.network(item['contentImgUrl']),
-                          SizedBox(height: 20),
+                          // ===== الهيدر
                           Padding(
-                            padding: EdgeInsets.all(8),
+                            padding: const EdgeInsets.fromLTRB(10, 10, 10, 0),
                             child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
                               children: [
-                                if (item['buttonContentUrl'] != '')
+                                CircleAvatar(
+                                  radius: 25,
+                                  backgroundImage:
+                                  NetworkImage(item['sourceImageUrl']),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                    CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        item['source'],
+                                        style: TextStyle(
+                                          fontSize:
+                                          MediaQuery.sizeOf(context)
+                                              .height /
+                                              50,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        item['dateOfPost'],
+                                        style: TextStyle(
+                                          fontSize:
+                                          MediaQuery.sizeOf(context)
+                                              .height /
+                                              75,
+                                          color: Colors.black54,
+                                          fontWeight: FontWeight.normal,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                IconButton(
+                                  onPressed: () => Share.share(
+                                    '${item['content']}\nتمت مشاركة المنشور من تطبيق العتيبة..يمكنك تنزيله مجانا من الرابط www.google.com',
+                                    subject: 'تطبيق رائع',
+                                  ),
+                                  icon: SvgPicture.asset(
+                                    'assets/svg/share_post_icon.svg',
+                                    width: iconWidth * 3,
+                                    height: iconWidth * 3,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+
+                          const SizedBox(height: 8),
+
+                          // ===== النص الأساسي
+                          Padding(
+                            padding:
+                            const EdgeInsets.symmetric(horizontal: 12),
+                            child: Text(
+                              item['content'],
+                              style: const TextStyle(
+                                fontSize: 14,
+                                height: 1.6,
+                                color: Colors.black87,
+                              ),
+                            ),
+                          ),
+
+                          const SizedBox(height: 12),
+
+                          // ===== صورة المحتوى (مع زووم وأنيميشن سلس)
+                          if (item['contentImgUrl'] != '')
+                            Padding(
+                              padding:
+                              const EdgeInsets.symmetric(horizontal: 12),
+                              child: GestureDetector(
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    PageRouteBuilder(
+                                      transitionDuration: const Duration(milliseconds: 300),
+                                      pageBuilder: (_, __, ___) => Scaffold(
+                                        backgroundColor: Colors.black,
+                                        appBar: AppBar(
+                                          backgroundColor: Colors.black.withOpacity(0.3),
+                                          elevation: 0,
+                                          leading: IconButton(
+                                            icon: const Icon(Icons.arrow_back, color: Colors.white),
+                                            onPressed: () => Navigator.pop(context),
+                                          ),
+                                        ),
+                                        body: Center(
+                                          child: Hero(
+                                            tag: item['contentImgUrl'],
+                                            child: InteractiveViewer(
+                                              panEnabled: true,
+                                              minScale: 0.5,
+                                              maxScale: 4.0,
+                                              child: Image.network(
+                                                item['contentImgUrl'],
+                                                fit: BoxFit.contain,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                  ),
+                                  );
+                                },
+                                child: Hero(
+                                  tag: item['contentImgUrl'],
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(10),
+                                    child: Image.network(
+                                      item['contentImgUrl'],
+                                      fit: BoxFit.cover,
+                                      loadingBuilder:
+                                          (context, child, progress) {
+                                        if (progress == null) return child;
+                                        return const SizedBox(
+                                          height: 160,
+                                          child: Center(
+                                              child:
+                                              CircularProgressIndicator()),
+                                        );
+                                      },
+                                      errorBuilder: (_, __, ___) =>
+                                      const SizedBox.shrink(),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+
+                          const SizedBox(height: 12),
+
+                          // ===== زر الرابط (اختياري)
+                          if (item['buttonContentUrl'] != '')
+                            Padding(
+                              padding:
+                              const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                              child: Row(
+                                children: [
                                   TextButton.icon(
                                     onPressed: () =>
                                         _launchURL(item['buttonContentUrl']),
                                     style: ButtonStyle(
                                       foregroundColor:
-                                          WidgetStateProperty.all<Color>(
-                                            Colors.white,
-                                          ),
+                                      WidgetStateProperty.all<Color>(
+                                          Colors.white),
                                       backgroundColor:
-                                          WidgetStateProperty.all<Color>(
-                                            Color(0xFF988561),
-                                          ),
+                                      WidgetStateProperty.all<Color>(
+                                          const Color(0xFF988561)),
+                                      padding: WidgetStateProperty.all<
+                                          EdgeInsets>(
+                                        const EdgeInsets.symmetric(
+                                            horizontal: 12, vertical: 8),
+                                      ),
+                                      shape: WidgetStateProperty.all<
+                                          RoundedRectangleBorder>(
+                                        RoundedRectangleBorder(
+                                          borderRadius:
+                                          BorderRadius.circular(8),
+                                        ),
+                                      ),
                                     ),
-                                    label: Text(item['buttonContent']),
                                     icon: SvgPicture.asset(
                                       'assets/svg/link_post_icon.svg',
                                       width: iconWidth - iconWidth / 6,
                                       height: iconHeight - iconHeight / 6,
                                     ),
+                                    label: Text(item['buttonContent']),
                                   ),
-                                /*SizedBox(width: 8),
-                                Text(item['numberOfComments'].toString()),
-                                SvgPicture.asset(
-                                  'assets/svg/comment_like_icon.svg',
-                                  width: iconWidth,
-                                  height: iconHeight,
-                                ),
-                                SizedBox(width: 8),
-                                Text(
-                                  item['numberOfLoved'].toString(),
-                                  style: TextStyle(color: Colors.black),
-                                ),
-                                SvgPicture.asset(
-                                  'assets/svg/empty_like_icon.svg',
-                                  width: iconWidth,
-                                  height: iconHeight,
-                                ),*/
-                              ],
+                                ],
+                              ),
                             ),
-                          ),
                         ],
                       ),
                     );
