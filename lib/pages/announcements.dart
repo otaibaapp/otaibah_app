@@ -36,7 +36,7 @@ class _AnnouncementsState extends State<Announcements>
     final Uri url = Uri.parse(urlString);
     if (!await launchUrl(url)) {
       displaySnackBar(' حدث خطأ ما:  $url', Colors.red);
-      throw Exception('لم يتم تحميل الرابط بسبب الخطأ:  $url');
+      throw Exception('لم يتم تحميل الرابط: $url');
     }
   }
 
@@ -138,23 +138,19 @@ class _AnnouncementsState extends State<Announcements>
                     viewportFraction: 1.0,
                   ),
                   items: imageUrls.map((url) {
-                    return Builder(
-                      builder: (BuildContext context) {
-                        return ClipRRect(
-                          borderRadius: BorderRadius.circular(7),
-                          child: Image.network(
-                            url,
-                            fit: BoxFit.cover,
-                            width: MediaQuery.of(context).size.width,
-                            loadingBuilder: (context, child, progress) {
-                              if (progress == null) return child;
-                              return const Center(
-                                child: CircularProgressIndicator(),
-                              );
-                            },
-                          ),
-                        );
-                      },
+                    return ClipRRect(
+                      borderRadius: BorderRadius.circular(7),
+                      child: Image.network(
+                        url,
+                        fit: BoxFit.cover,
+                        width: MediaQuery.of(context).size.width,
+                        loadingBuilder: (context, child, progress) {
+                          if (progress == null) return child;
+                          return const Center(
+                            child: CircularProgressIndicator(),
+                          );
+                        },
+                      ),
                     );
                   }).toList(),
                 ),
@@ -163,7 +159,7 @@ class _AnnouncementsState extends State<Announcements>
 
                 // ==== مربع البحث
                 Padding(
-                  padding: const EdgeInsets.all(8),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   child: TextField(
                     controller: _searchController,
                     decoration: InputDecoration(
@@ -178,6 +174,8 @@ class _AnnouncementsState extends State<Announcements>
                     ),
                   ),
                 ),
+
+                const SizedBox(height: 8),
 
                 // ==== المنشورات
                 ListView.builder(
@@ -268,29 +266,26 @@ class _AnnouncementsState extends State<Announcements>
 
                           const SizedBox(height: 12),
 
-                          // ===== صورة المحتوى مع كل المزايا
+                          // ===== صورة المحتوى (زووم فل شاشة + إغلاق بالنقر على الخلفية/السحب/السهم)
                           if (item['contentImgUrl'] != '')
                             Padding(
                               padding:
                               const EdgeInsets.symmetric(horizontal: 12),
                               child: GestureDetector(
                                 onTap: () {
-                                  Navigator.push(
-                                    context,
-                                    PageRouteBuilder(
-                                      opaque: false,
-                                      transitionDuration:
-                                      const Duration(milliseconds: 300),
-                                      pageBuilder: (_, __, ___) => GestureDetector(
-                                        onVerticalDragUpdate: (details) {
-                                          if (details.primaryDelta! > 20 ||
-                                              details.primaryDelta! < -20) {
-                                            Navigator.pop(context);
-                                          }
-                                        },
-                                        onTap: () {
-                                          Navigator.pop(context);
-                                        },
+                                  showGeneralDialog(
+                                    context: context,
+                                    barrierDismissible:
+                                    true, // النقر على الخلفية السوداء يغلق
+                                    barrierLabel:
+                                    MaterialLocalizations.of(context)
+                                        .modalBarrierDismissLabel,
+                                    barrierColor:
+                                    Colors.black.withOpacity(0.9),
+                                    transitionDuration:
+                                    const Duration(milliseconds: 220),
+                                    pageBuilder: (context, a1, a2) {
+                                      return SafeArea(
                                         child: Scaffold(
                                           backgroundColor: Colors.black,
                                           appBar: AppBar(
@@ -298,54 +293,95 @@ class _AnnouncementsState extends State<Announcements>
                                             Colors.black.withOpacity(0.3),
                                             elevation: 0,
                                             leading: IconButton(
-                                              icon: const Icon(Icons.arrow_back,
-                                                  color: Colors.white),
+                                              icon: const Icon(
+                                                Icons.arrow_back,
+                                                color: Colors.white,
+                                              ),
                                               onPressed: () =>
                                                   Navigator.pop(context),
                                             ),
                                           ),
-                                          body: Center(
-                                            child: Hero(
-                                              tag: item['contentImgUrl'],
-                                              child: InteractiveViewer(
-                                                panEnabled: true,
-                                                minScale: 0.5,
-                                                maxScale: 4.0,
-                                                child: Image.network(
-                                                  item['contentImgUrl'],
-                                                  fit: BoxFit.contain,
-                                                  width: double.infinity,
-                                                  height: double.infinity,
+                                          body: LayoutBuilder(
+                                            builder: (context, constraints) {
+                                              final maxW =
+                                                  constraints.maxWidth;
+                                              final maxH =
+                                                  constraints.maxHeight;
+                                              return GestureDetector(
+                                                // السحب لأعلى/أسفل للإغلاق
+                                                onVerticalDragEnd: (_) =>
+                                                    Navigator.pop(context),
+                                                child: Stack(
+                                                  children: [
+                                                    // خلفية تستقبل النقر خارج الصورة
+                                                    Positioned.fill(
+                                                      child: GestureDetector(
+                                                        onTap: () =>
+                                                            Navigator.pop(
+                                                                context),
+                                                        child: Container(
+                                                          color: Colors
+                                                              .transparent,
+                                                        ),
+                                                      ),
+                                                    ),
+
+                                                    // الصورة مع زووم يغطي كامل الشاشة
+                                                    Center(
+                                                      child: InteractiveViewer(
+                                                        panEnabled: true,
+                                                        minScale: 1.0,
+                                                        maxScale: 4.0,
+                                                        boundaryMargin:
+                                                        const EdgeInsets
+                                                            .all(200),
+                                                        clipBehavior:
+                                                        Clip.none,
+                                                        child: ConstrainedBox(
+                                                          // نخلي مساحة التفاعل بحجم الشاشة
+                                                          constraints:
+                                                          BoxConstraints(
+                                                            maxWidth: maxW,
+                                                            maxHeight: maxH,
+                                                          ),
+                                                          child: FittedBox(
+                                                            fit: BoxFit
+                                                                .contain, // عرض مبدئي مليان الشاشة (مع الحفاظ على النسبة)
+                                                            child: Image.network(
+                                                              item['contentImgUrl'],
+                                                              // بدون fit هنا — لأن FittedBox يتولى العملية
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
                                                 ),
-                                              ),
-                                            ),
+                                              );
+                                            },
                                           ),
                                         ),
-                                      ),
-                                    ),
+                                      );
+                                    },
                                   );
                                 },
-                                child: Hero(
-                                  tag: item['contentImgUrl'],
-                                  child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(10),
-                                    child: Image.network(
-                                      item['contentImgUrl'],
-                                      fit: BoxFit.cover,
-                                      loadingBuilder:
-                                          (context, child, progress) {
-                                        if (progress == null) return child;
-                                        return const SizedBox(
-                                          height: 160,
-                                          child: Center(
-                                            child:
-                                            CircularProgressIndicator(),
-                                          ),
-                                        );
-                                      },
-                                      errorBuilder: (_, __, ___) =>
-                                      const SizedBox.shrink(),
-                                    ),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(10),
+                                  child: Image.network(
+                                    item['contentImgUrl'],
+                                    fit: BoxFit.cover,
+                                    loadingBuilder:
+                                        (context, child, progress) {
+                                      if (progress == null) return child;
+                                      return const SizedBox(
+                                        height: 160,
+                                        child: Center(
+                                          child: CircularProgressIndicator(),
+                                        ),
+                                      );
+                                    },
+                                    errorBuilder: (_, __, ___) =>
+                                    const SizedBox.shrink(),
                                   ),
                                 ),
                               ),
@@ -353,16 +389,16 @@ class _AnnouncementsState extends State<Announcements>
 
                           const SizedBox(height: 12),
 
-                          // ===== زر الرابط
+                          // ===== زر الرابط (اختياري)
                           if (item['buttonContentUrl'] != '')
                             Padding(
-                              padding: const EdgeInsets.fromLTRB(
-                                  12, 0, 12, 12),
+                              padding:
+                              const EdgeInsets.fromLTRB(12, 0, 12, 12),
                               child: Row(
                                 children: [
                                   TextButton.icon(
-                                    onPressed: () =>
-                                        _launchURL(item['buttonContentUrl']),
+                                    onPressed: () => _launchURL(
+                                        item['buttonContentUrl']),
                                     style: ButtonStyle(
                                       foregroundColor:
                                       WidgetStateProperty.all<Color>(
@@ -386,7 +422,8 @@ class _AnnouncementsState extends State<Announcements>
                                     icon: SvgPicture.asset(
                                       'assets/svg/link_post_icon.svg',
                                       width: iconWidth - iconWidth / 6,
-                                      height: iconHeight - iconHeight / 6,
+                                      height:
+                                      iconHeight - iconHeight / 6,
                                     ),
                                     label: Text(item['buttonContent']),
                                   ),
