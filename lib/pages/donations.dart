@@ -39,7 +39,7 @@ class _DonationsState extends State<Donations>
 
   bool _isLoading = true;
   // قائمة لحفظ البيانات
-  List<Map<dynamic, dynamic>> _itemsList = [];
+  final List<Map<dynamic, dynamic>> _itemsList = [];
 
   // دالة لإضافة عنصر جديد
 
@@ -66,7 +66,7 @@ class _DonationsState extends State<Donations>
         });
   }
 
-  List<String> _filteredItems = [];
+  final List<String> _filteredItems = [];
   @override
   void initState() {
     super.initState();

@@ -22,7 +22,7 @@ class _SignUpState extends State<SignUp> {
       ).showSnackBar(SnackBar(content: Text(msg), backgroundColor: color));
     }
 
-    bool _isLoading = false;
+    bool isLoading = false;
     TextEditingController? passwordController = TextEditingController(),
         emailController = TextEditingController(),
         confirmPasswordController = TextEditingController(),
@@ -34,7 +34,7 @@ class _SignUpState extends State<SignUp> {
       String fullName,
     ) async {
       setState(() {
-        _isLoading = true;
+        isLoading = true;
       });
       try {
         // استخدام FirebaseAuth لإنشاء المستخدم
@@ -52,19 +52,19 @@ class _SignUpState extends State<SignUp> {
           await Future.delayed(const Duration(seconds: 3));
           Navigator.push(context, MaterialPageRoute(builder: (c) => MyApp()));
           setState(() {
-            _isLoading = false;
+            isLoading = false;
           });
         } on FirebaseAuthException catch (e) {
           displaySnackBar(e.code, Colors.red);
           setState(() {
-            _isLoading = false;
+            isLoading = false;
           });
         }
         // يمكنك إضافة كود للتنقل إلى صفحة أخرى هنا
         // Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => HomeScreen()));
       } on FirebaseAuthException catch (e) {
         setState(() {
-          _isLoading = false;
+          isLoading = false;
         });
         // التعامل مع الأخطاء التي قد تحدث
         String errorMessage = 'حدث خطأ غير معروف.';
@@ -78,7 +78,7 @@ class _SignUpState extends State<SignUp> {
           errorMessage = e.code;
         }
         setState(() {
-          _isLoading = false;
+          isLoading = false;
         });
         // عرض رسالة الخطأ للمستخدم
         ScaffoldMessenger.of(
@@ -87,7 +87,7 @@ class _SignUpState extends State<SignUp> {
         displaySnackBar('خطأ في إنشاء الحساب: ${e.code}', Colors.red);
       } catch (e) {
         setState(() {
-          _isLoading = false;
+          isLoading = false;
         });
       }
     }
@@ -132,7 +132,7 @@ class _SignUpState extends State<SignUp> {
 
     // ... (بقية الكود الخاص بالواجهة)
 
-    void _signUp() {
+    void signUp() {
       checkFieldsValidation(
         emailController.text.trim(),
         passwordController.text.trim(),
@@ -254,10 +254,10 @@ class _SignUpState extends State<SignUp> {
                     ),
                   ),
                   onPressed: () {
-                    _signUp();
+                    signUp();
                     //Navigator.pop(context);
                   },
-                  child: !_isLoading
+                  child: !isLoading
                       ? Text('فتح حساب جديد', style: TextStyle(fontSize: 16))
                       : LoadingDialog(msg: 'جاري المصادقة'),
                 ),

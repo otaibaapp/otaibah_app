@@ -37,7 +37,7 @@ class _OpenSouqState extends State<OpenSouq>
   }
 
   // قائمة لحفظ البيانات
-  List<Map<dynamic, dynamic>> _itemsList = [];
+  final List<Map<dynamic, dynamic>> _itemsList = [];
 
   // دالة لإضافة عنصر جديد
 
@@ -63,7 +63,7 @@ class _OpenSouqState extends State<OpenSouq>
         });
   }
 
-  List<String> _filteredItems = [];
+  final List<String> _filteredItems = [];
   @override
   void initState() {
     super.initState();

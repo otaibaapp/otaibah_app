@@ -6,13 +6,19 @@ import 'package:otaibah_app/pages/dashboard.dart';
 import 'package:otaibah_app/pages/sign_in.dart';
 import 'package:otaibah_app/pages/sign_up.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'firebase_options.dart';
 
 void main() async {
   WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
   FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
-  await Firebase.initializeApp();
+
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
   FlutterNativeSplash.remove();
-  runApp(const MaterialApp(home: MyApp(), debugShowCheckedModeBanner: false));
+
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
@@ -20,13 +26,15 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Directionality(
-      // هنا يتم تحديد الاتجاه لكل التطبيق
-      textDirection: TextDirection.rtl,
-      child: MaterialApp(
-        title: 'RTL App',
-        home: MyStatefulWidget(),
-        debugShowCheckedModeBanner: false,
+    return MaterialApp(
+      title: 'RTL App',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        fontFamily: 'Qomra', // 👈 هنا عيّنا الخط الافتراضي
+      ),
+      home: const Directionality(
+        textDirection: TextDirection.rtl,
+        child: MyStatefulWidget(),
       ),
     );
   }
@@ -42,12 +50,10 @@ class MyStatefulWidget extends StatefulWidget {
 class _MyStatefulWidgetState extends State<MyStatefulWidget> {
   final TextEditingController _textController = TextEditingController();
   bool _isEmailVerified = false;
-  // دالة للتحقق من حالة تسجيل الدخول
+
   _checkEmailStatus() async {
     final prefs = await SharedPreferences.getInstance();
-
     final isLoggedIn = prefs.getBool('isEmailVerified') ?? false;
-
     setState(() {
       _isEmailVerified = isLoggedIn;
     });
@@ -55,7 +61,7 @@ class _MyStatefulWidgetState extends State<MyStatefulWidget> {
 
   @override
   void initState() {
-    super.initState(); // مهم جداً استدعاء الدالة الأصلية
+    super.initState();
     _checkEmailStatus();
   }
 
@@ -74,42 +80,43 @@ class _MyStatefulWidgetState extends State<MyStatefulWidget> {
           Positioned.fill(
             child: Image.asset(
               'assets/images/background.png',
-              fit: BoxFit.contain,
+              fit: BoxFit.cover,        // 👈 غيّرها من contain إلى cover
+              width: double.infinity,   // 👈 يخليها تغطي العرض كامل
+              height: double.infinity,  // 👈 يغطي الطول كامل
             ),
           ),
           Column(
             children: [
-              SizedBox(height: MediaQuery.sizeOf(context).height * 0.45),
+              SizedBox(height: MediaQuery.sizeOf(context).height * 0.40),
               SvgPicture.asset(
                 'assets/svg/app_logo.svg',
-                height: 20,
-                width: 20,
+                height: 75,
+                width: 75,
               ),
-              Text(
-                'بلدة العتيبة ',
+              const SizedBox(height: 10),
+              const Text(
+                'تطبيق بلدة العتيبة',
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
-                  fontSize: 16.0,
+                  fontSize: 25.0,
                 ),
               ),
-
               Center(
                 child: Padding(
                   padding: const EdgeInsets.all(20.0),
                   child: RichText(
-                    text: TextSpan(
+                    textAlign: TextAlign.center,
+                    text: const TextSpan(
                       children: <TextSpan>[
                         TextSpan(
                           text: 'تطبيق العتيبة: ',
                           style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black, // يجعل النص غامقًا
+                            fontWeight: FontWeight.bold, fontFamily: 'Qomra',
+                            color: Colors.black,
                           ),
                         ),
                         TextSpan(
-                          style: TextStyle(
-                            color: Colors.black, // يجعل النص غامقًا
-                          ),
+                          style: TextStyle(color: Colors.black, fontFamily: 'Qomra' ),
                           text:
                           'منصة تجمع كل خدمات البلدة في مكان واحد, الطب, التعليم, الدعم, التواصل, الإعلانات.. كل ماتحتاجه لحياة أسهل',
                         ),
@@ -118,95 +125,72 @@ class _MyStatefulWidgetState extends State<MyStatefulWidget> {
                   ),
                 ),
               ),
-
-              Text(
+              const Text(
                 'بلدتنا تستحق, فلننهض بها معاَ🤞',
                 style: TextStyle(
                   fontSize: 16.0,
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              Spacer(),
+              const Spacer(),
               Padding(
-                padding: EdgeInsets.fromLTRB(16, 16, 16, 6),
-                child: Container(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 6),
+                child: SizedBox(
                   width: double.infinity,
+                  height: 50, // 👈 الطول المطلوب
                   child: ElevatedButton(
                     onPressed: () {
                       Navigator.pop(context);
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (c) => SignIn()),
+                        MaterialPageRoute(
+                            builder: (c) => const SignIn()),
                       );
                     },
-                    child: Text('تسجيل الدخول'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white,
+                      elevation: 0,
+                      backgroundColor: Colors.transparent,
                       foregroundColor: Colors.black,
-                      side: BorderSide(color: Colors.black, width: 1),
+                      side: const BorderSide(
+                          color: Colors.black, width: 1),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(5),
                       ),
                     ),
+                    child: const Text('تسجيل الدخول'),
                   ),
                 ),
               ),
               Padding(
-                padding: EdgeInsets.fromLTRB(16, 0, 16, 16),
-                child: Container(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                child: SizedBox(
                   width: double.infinity,
+                  height: 50, // 👈 الطول المطلوب
                   child: ElevatedButton(
                     onPressed: () {
                       Navigator.pop(context);
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (c) => SignUp()),
+                        MaterialPageRoute(
+                            builder: (c) => const SignUp()),
                       );
                     },
-                    child: Text('إنشاء حساب جديد'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.black,
                       foregroundColor: Colors.white,
-                      side: BorderSide(color: Colors.white, width: 1),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(5),
                       ),
                     ),
+                    child: const Text('إنشاء حساب جديد'),
                   ),
                 ),
               ),
-
-              /*Padding(
-                      padding: EdgeInsets.fromLTRB(16, 0, 16, 16),
-                      child: Container(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: () {
-                            Navigator.pop(context);
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (c) => AddToFirebaseDatabase(),
-                              ),
-                            );
-                          },
-                          child: Text('إضافة بيانات إلى قاعدة البيانات'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.black,
-                            foregroundColor: Colors.white,
-                            side: BorderSide(color: Colors.white, width: 1),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),*/
             ],
           ),
         ],
       ),
     )
-        : Dashboard();
+        : const Dashboard();
   }
 }

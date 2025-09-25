@@ -29,7 +29,7 @@ class _SignInState extends State<SignIn> {
       ).showSnackBar(SnackBar(content: Text(msg), backgroundColor: color));
     }
 
-    void _signIn(String email, String password) async {
+    void signIn(String email, String password) async {
       try {
         showDialog(
           context: context,
@@ -76,7 +76,7 @@ class _SignInState extends State<SignIn> {
         displaySnackBar('تحقق من كلمة السر او الايميل', Colors.red);
         return;
       } else {
-        _signIn(email, password);
+        signIn(email, password);
       }
     }
 
