@@ -1,7 +1,10 @@
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:carousel_slider/carousel_slider.dart';
 import 'package:firebase_database/firebase_database.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class OpenSouq extends StatefulWidget {
@@ -13,12 +16,12 @@ class OpenSouq extends StatefulWidget {
 
 class _OpenSouqState extends State<OpenSouq>
     with SingleTickerProviderStateMixin {
-  final TextEditingController _searchController = TextEditingController();
+  //final TextEditingController _searchController = TextEditingController();
+  List<String> imageUrls = [];
+  bool loading = true;
   String a = "aaa";
-  double get iconWidth => MediaQuery.sizeOf(context).width / 65;
-  double get iconHeight => MediaQuery.sizeOf(context).height / 65;
+
   int indexSelected = 0;
-  final String firebaseKey = 'otaibah_navigators_taps';
   void displaySnackBar(String msg, Color color) {
     ScaffoldMessenger.of(
       context,
@@ -30,12 +33,13 @@ class _OpenSouqState extends State<OpenSouq>
   );
   Future<void> _launchURL(String urlString) async {
     final Uri url = Uri.parse(urlString);
-    if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
-      displaySnackBar(' حدث خطأ ما  $url', Colors.red);
-      throw Exception('Could not launch $url');
+    if (!await launchUrl(url)) {
+      displaySnackBar(' حدث خطأ ما:  $url', Colors.red);
+      throw Exception('لم يتم تحميل الرابط بسبب الخطأ:  $url');
     }
   }
 
+  //bool _isLoading = true;
   // قائمة لحفظ البيانات
   final List<Map<dynamic, dynamic>> _itemsList = [];
 
@@ -58,42 +62,68 @@ class _OpenSouqState extends State<OpenSouq>
             });
             setState(() {
               a = (_itemsList.length).toString();
+              //_isLoading = false;
             });
           }
         });
   }
 
-  final List<String> _filteredItems = [];
+  //List<String> _filteredItems = [];
   @override
   void initState() {
     super.initState();
     //_filteredItems = _allItems;
-    _searchController.addListener(_filterItems);
+    //_searchController.addListener(_filterItems);
     _getDataFromFirebase();
+    loadImages();
   }
 
-  Future<void> saveLoginStatus(bool isLoggedIn) async {
+  void loadImages() async {
+    final urls = await fetchImages();
+    setState(() {
+      imageUrls = urls;
+      loading = false;
+    });
+  }
+
+  /* Future<void> saveLoginStatus(bool isLoggedIn) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('isEmailVerified', isLoggedIn);
-  }
+  }*/
 
   @override
   void dispose() {
-    _searchController.dispose();
+    //_searchController.dispose();
     super.dispose();
   }
 
-  void _filterItems() {
+  /*void _filterItems() {
     final query = _searchController.text.toLowerCase();
     setState(() {
-      /*_filteredItems = _allItems.where((item) {
+      _filteredItems = _allItems.where((item) {
         return item.toLowerCase().contains(query);
-      }).toList();*/
+      }).toList();
     });
+  }*/
+  Future<List<String>> fetchImages() async {
+    final storageRef = FirebaseStorage.instance
+        .ref()
+        .child('otaibah_main')
+        .child('navigation_menu_items')
+        .child('orders');
+    final listResult = await storageRef.listAll();
+
+    // تحويل الملفات إلى روابط تحميل
+    final urls = await Future.wait(
+      listResult.items.map((item) => item.getDownloadURL()),
+    );
+    return urls;
   }
 
   @override
   Widget build(BuildContext context) {
+    final iconWidth = MediaQuery.sizeOf(context).width / 75;
+    final iconHeight = MediaQuery.sizeOf(context).height / 75;
     return Scaffold(
       body: SafeArea(
         child: Directionality(
@@ -102,42 +132,40 @@ class _OpenSouqState extends State<OpenSouq>
             scrollDirection: Axis.vertical,
             child: Column(
               children: [
-                SizedBox(height: 12),
-                Card(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(
-                      7.0,
-                    ), // تحديد نصف قطر الدوران
+                SizedBox(height: 4),
+                CarouselSlider(
+                  options: CarouselOptions(
+                    height: 100, // ارتفاع السلايدر
+                    autoPlay: true, // تشغيل تلقائي
+                    autoPlayInterval: const Duration(seconds: 5), // كل 4 ثواني
+                    enlargeCenterPage: true, // تكبير الصورة النشطة قليلاً
+                    viewportFraction: 1.0, // يعرض صورة واحدة فقط
                   ),
-                  // إضافة الـ elevation يعطي تأثير الظل
-                  elevation: 0,
-                  margin: const EdgeInsets.all(8.0),
-                  child: Column(
-                    // لضبط حجم Card بناءً على محتواه
-                    mainAxisSize: MainAxisSize.max,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: <Widget>[
-                      // عرض الصورة من الإنترنت
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(10.0),
-                        child: Image.network(
-                          height: MediaQuery.sizeOf(context).height / 6,
-                          "https://b.top4top.io/p_3510xqunk1.jpg",
-                          fit: BoxFit.cover, // لجعل الصورة تغطي المساحة المتاحة
-                          // يمكنك إضافة placeholder أو مؤشر تحميل
-                          loadingBuilder: (context, child, loadingProgress) {
-                            if (loadingProgress == null) return child;
-                            return SizedBox(
-                              height:
-                                  MediaQuery.sizeOf(context).height /
-                                  6, // يمكنك تعديل الارتفاع
-                              child: Center(child: CircularProgressIndicator()),
-                            );
+                  items: imageUrls.map((url) {
+                    return Builder(
+                      builder: (BuildContext context) {
+                        return GestureDetector(
+                          onTap: () {
+                            displaySnackBar('Done', Colors.green);
                           },
-                        ),
-                      ),
-                    ],
-                  ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: Image.network(
+                              url,
+                              fit: BoxFit.cover,
+                              width: MediaQuery.of(context).size.width,
+                              loadingBuilder: (context, child, progress) {
+                                if (progress == null) return child;
+                                return Center(
+                                  child: CircularProgressIndicator(),
+                                );
+                              },
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  }).toList(),
                 ),
 
                 /*Padding(
@@ -165,7 +193,7 @@ class _OpenSouqState extends State<OpenSouq>
                             7.0,
                           ), // تحديد نصف قطر الدوران
                         ),
-                        //  الـ elevation يعطي تأثير الظل
+                        // إضافة الـ elevation يعطي تأثير الظل
                         elevation: 0,
                         child: TextButton(
                           onPressed: () {},
@@ -175,144 +203,119 @@ class _OpenSouqState extends State<OpenSouq>
                     },
                   ),
                 ),
+*/
+                // مساحة فاصلة
+                const SizedBox(height: 8),
 
-                const SizedBox(height: 8),*/
-                // القائمة العمودية (ListView.builder)
                 GridView.builder(
-                  itemCount: _itemsList.length,
+                  physics: NeverScrollableScrollPhysics(),
+                  padding: const EdgeInsets.all(8),
+                  shrinkWrap: true,
                   gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 3,
-                    crossAxisSpacing: 10,
-                    mainAxisSpacing: 10,
-                    childAspectRatio:
-                        1, // العرض إلى الارتفاع (اضبطه حسب التصميم)
+                    crossAxisCount: 2, // 🔹 عنصرين في كل صف
+                    crossAxisSpacing: 6, // مسافة أفقية بين العناصر
+                    mainAxisSpacing: 6, // مسافة عمودية بين العناصر
+                    mainAxisExtent: iconHeight * 75 / 3,
                   ),
+                  itemCount: _itemsList.length,
                   itemBuilder: (context, index) {
-                    return Column(
-                      children: [
-                        Row(
+                    /*final data =
+                        _itemsList as Map<String, dynamic>;
+                    final title = data['title'] ?? 'بدون عنوان';
+                    final description = data['description'] ?? '';
+                    final price = data['price'] ?? 0;
+                    final isAvailable = data['isAvailable'] ?? false;*/
+
+                    return GestureDetector(
+                      onTap: () => displaySnackBar('تم الضغط', Colors.lime),
+                      child: Container(
+                        //height: iconHeight * 75 / 3,
+                        color: Colors.grey[200],
+                        child: Column(
                           children: [
                             SizedBox(
-                              width: iconWidth * 8,
-                              height: iconWidth * 8,
-                              child: CircleAvatar(
-                                radius: 4,
-                                backgroundImage: NetworkImage(
-                                  _itemsList.elementAt(index)['sourceImageUrl'],
+                              height: 140,
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(4),
+                                child: SizedBox(
+                                  child: CachedNetworkImage(
+                                    imageUrl: _itemsList[index]['imgUrl'],
+                                    fit: BoxFit.fill,
+                                    placeholder: (context, url) =>
+                                        CircularProgressIndicator(),
+                                    errorWidget: (context, url, error) =>
+                                        Icon(Icons.error),
+                                  ),
                                 ),
                               ),
                             ),
-                            Padding(
-                              padding: const EdgeInsets.all(1.0),
-                              child: Column(
-                                children: [
-                                  Text(
-                                    _itemsList.elementAt(index)['source'],
-                                    style: TextStyle(
-                                      fontSize:
-                                          MediaQuery.sizeOf(context).height /
-                                          50,
-                                      fontWeight: FontWeight.bold,
-                                    ),
+                            Row(
+                              children: [
+                                Padding(
+                                  padding: const EdgeInsets.all(1.0),
+                                  child: Column(
+                                    children: [
+                                      Text(
+                                        _itemsList[index]['name'],
+                                        overflow: TextOverflow.ellipsis,
+                                        maxLines: 1,
+                                        style: TextStyle(
+                                          fontSize:
+                                              MediaQuery.sizeOf(
+                                                context,
+                                              ).height /
+                                              60,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      //if (_itemsList[index]['compromise'])
+                                      //Icon(CupertinoIcons.add),
+                                    ],
                                   ),
-                                  Text(
-                                    _itemsList.elementAt(index)['dateOfPost'],
-                                    style: TextStyle(
-                                      fontSize:
-                                          MediaQuery.sizeOf(context).height /
-                                          75,
-                                      fontWeight: FontWeight.normal,
-                                    ),
+                                ),
+                                Spacer(),
+                                IconButton(
+                                  onPressed: () => Share.share(
+                                    _itemsList[index]['description'] +
+                                        '\n' +
+                                        'تمت مشاركة المنشور من تطبيق العتيبة..يمكنك تنزيله مجانا من الرابط www.google.com',
+                                    subject: 'تطبيق رائع',
                                   ),
-                                ],
+                                  icon: SvgPicture.asset(
+                                    'assets/svg/share_post_icon.svg',
+                                    width: iconWidth * 3,
+                                    height: iconWidth * 3,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            Text(
+                              _itemsList[index]['description'],
+                              maxLines: 3,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize:
+                                    MediaQuery.sizeOf(context).height / 75,
+                                fontWeight: FontWeight.normal,
+                              ),
+                            ),
+                            Text(
+                              _itemsList[index]['price'],
+                              style: TextStyle(
+                                backgroundColor: Color(0xFF988561),
+                                fontSize:
+                                    MediaQuery.sizeOf(context).height / 75,
+                                fontWeight: FontWeight.normal,
                               ),
                             ),
                           ],
                         ),
-                        SizedBox(height: 8),
-                        Text(_itemsList.elementAt(index)['content']),
-                        SizedBox(height: 8),
-                        if (_itemsList.elementAt(index)['contentImgUrl'] != '')
-                          Image.network(
-                            _itemsList.elementAt(index)['contentImgUrl'],
-                          ),
-                        SizedBox(height: 20),
-                        Padding(
-                          padding: EdgeInsets.all(8),
-                          child: Row(
-                            children: [
-                              if (_itemsList.elementAt(
-                                    index,
-                                  )['buttonContentUrl'] !=
-                                  '')
-                                TextButton.icon(
-                                  onPressed: () {
-                                    _launchURL(
-                                      _itemsList.elementAt(
-                                        index,
-                                      )['buttonContentUrl'],
-                                    );
-                                  },
-                                  style: ButtonStyle(
-                                    foregroundColor:
-                                        WidgetStateProperty.all<Color>(
-                                          Colors.white,
-                                        ),
-                                    backgroundColor:
-                                        WidgetStateProperty.all<Color>(
-                                          Color(0xFF988561),
-                                        ),
-                                  ),
-                                  label: Text(
-                                    _itemsList.elementAt(
-                                      index,
-                                    )['buttonContent'],
-                                  ),
-                                  icon: SvgPicture.asset(
-                                    'assets/svg/link_post_icon.svg',
-                                    width: iconWidth - iconWidth / 6,
-                                    height: iconHeight - iconHeight / 6,
-                                  ),
-                                ),
-                              Spacer(),
-                              SvgPicture.asset(
-                                'assets/svg/share_post_icon.svg',
-                                width: iconWidth,
-                                height: iconHeight,
-                              ),
-                              SizedBox(width: 12),
-                              Text(
-                                _itemsList
-                                    .elementAt(index)['numberOfComments']
-                                    .toString(),
-                              ),
-                              SizedBox(width: 8),
-                              SvgPicture.asset(
-                                'assets/svg/comment_like_icon.svg',
-                                width: iconWidth,
-                                height: iconHeight,
-                              ),
-                              SizedBox(width: 12),
-                              Text(
-                                _itemsList
-                                    .elementAt(index)['numberOfLoved']
-                                    .toString(),
-                                style: TextStyle(color: Colors.black),
-                              ),
-                              SizedBox(width: 8),
-                              SvgPicture.asset(
-                                'assets/svg/empty_like_icon.svg',
-                                width: iconWidth,
-                                height: iconHeight,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
+                      ),
                     );
                   },
                 ),
 
+                // القائمة العمودية (ListView.builder)
                 /*ListView.builder(
                   // خصائص لمنع تضارب التمرير
                   shrinkWrap: true,
@@ -320,108 +323,62 @@ class _OpenSouqState extends State<OpenSouq>
                   itemCount: _itemsList.length,
                   itemBuilder: (context, index) {
                     final item = _itemsList[index];
-                    return Column(
-                      children: [
-                        Row(
-                          children: [
-                            SizedBox(
-                              width: iconWidth * 8,
-                              height: iconWidth * 8,
-                              child: CircleAvatar(
-                                radius: 4,
-                                backgroundImage: NetworkImage(
-                                  item['sourceImageUrl'],
-                                ),
-                              ),
-                            ),
-                            Padding(
-                              padding: const EdgeInsets.all(1.0),
-                              child: Column(
-                                children: [
-                                  Text(
-                                    item['source'],
-                                    style: TextStyle(
-                                      fontSize:
-                                          MediaQuery.sizeOf(context).height /
-                                          50,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  Text(
-                                    item['dateOfPost'],
-                                    style: TextStyle(
-                                      fontSize:
-                                          MediaQuery.sizeOf(context).height /
-                                          75,
-                                      fontWeight: FontWeight.normal,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: 8),
-                        Text(item['content']),
-                        SizedBox(height: 8),
-                        if (item['contentImgUrl'] != '')
-                          Image.network(item['contentImgUrl']),
-                        SizedBox(height: 20),
-                        Padding(
-                          padding: EdgeInsets.all(8),
-                          child: Row(
+                    return Card(
+                      margin: const EdgeInsets.all(8.0),
+                      child: Column(
+                        children: [
+                          Row(
                             children: [
-                              if (item['buttonContentUrl'] != '')
-                                TextButton.icon(
-                                  onPressed: () {
-                                    _launchURL(item['buttonContentUrl']);
-                                  },
-                                  style: ButtonStyle(
-                                    foregroundColor:
-                                        WidgetStateProperty.all<Color>(
-                                          Colors.white,
-                                        ),
-                                    backgroundColor:
-                                        WidgetStateProperty.all<Color>(
-                                          Color(0xFF988561),
-                                        ),
-                                  ),
-                                  label: Text(item['buttonContent']),
-                                  icon: SvgPicture.asset(
-                                    'assets/svg/link_post_icon.svg',
-                                    width: iconWidth - iconWidth / 6,
-                                    height: iconHeight - iconHeight / 6,
-                                  ),
+                              Padding(
+                                padding: const EdgeInsets.all(1.0),
+                                child: Column(
+                                  children: [
+                                    Text(
+                                      item['name'],
+                                      style: TextStyle(
+                                        fontSize:
+                                            MediaQuery.sizeOf(context).height /
+                                            50,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    Text(
+                                      item['price'],
+                                      style: TextStyle(
+                                        fontSize:
+                                            MediaQuery.sizeOf(context).height /
+                                            75,
+                                        fontWeight: FontWeight.normal,
+                                      ),
+                                    ),
+                                    if (item['compromise'])
+                                      Icon(CupertinoIcons.add),
+                                  ],
                                 ),
+                              ),
                               Spacer(),
-                              SvgPicture.asset(
-                                'assets/svg/share_post_icon.svg',
-                                width: iconWidth,
-                                height: iconHeight,
-                              ),
-                              SizedBox(width: 12),
-                              Text(item['numberOfComments'].toString()),
-                              SizedBox(width: 8),
-                              SvgPicture.asset(
-                                'assets/svg/comment_like_icon.svg',
-                                width: iconWidth,
-                                height: iconHeight,
-                              ),
-                              SizedBox(width: 12),
-                              Text(
-                                item['numberOfLoved'].toString(),
-                                style: TextStyle(color: Colors.black),
-                              ),
-                              SizedBox(width: 8),
-                              SvgPicture.asset(
-                                'assets/svg/empty_like_icon.svg',
-                                width: iconWidth,
-                                height: iconHeight,
+                              IconButton(
+                                onPressed: () => Share.share(
+                                  item['description'] +
+                                      '\n' +
+                                      'تمت مشاركة المنشور من تطبيق العتيبة..يمكنك تنزيله مجانا من الرابط www.google.com',
+                                  subject: 'تطبيق رائع',
+                                ),
+                                icon: SvgPicture.asset(
+                                  'assets/svg/share_post_icon.svg',
+                                  width: iconWidth * 3,
+                                  height: iconWidth * 3,
+                                ),
                               ),
                             ],
                           ),
-                        ),
-                      ],
+                          SizedBox(height: 8),
+                          Text(item['description']),
+                          SizedBox(height: 8),
+                          //if (item['contentImgUrl'] != '')
+                          //Image.network(item['contentImgUrl']),
+                        ],
+                      ),
                     );
                   },
                 ),*/

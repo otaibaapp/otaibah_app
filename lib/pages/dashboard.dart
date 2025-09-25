@@ -25,8 +25,8 @@ class _DashboardState extends State<Dashboard>
   int indexSelected = 0;
   List<String> navigation_menu_items = [
     'announcements',
-    'shopping',
     'open_souq',
+    'shopping',
     'services',
     'education',
     'donations',

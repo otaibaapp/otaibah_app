@@ -1,8 +1,9 @@
+import 'package:carousel_slider/carousel_slider.dart';
 import 'package:firebase_database/firebase_database.dart';
-import 'package:flutter/cupertino.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class Announcements extends StatefulWidget {
@@ -14,7 +15,9 @@ class Announcements extends StatefulWidget {
 
 class _AnnouncementsState extends State<Announcements>
     with SingleTickerProviderStateMixin {
-  final TextEditingController _searchController = TextEditingController();
+  //final TextEditingController _searchController = TextEditingController();
+  List<String> imageUrls = [];
+  bool loading = true;
   String a = "aaa";
   double get iconWidth => MediaQuery.sizeOf(context).width / 75;
   double get iconHeight => MediaQuery.sizeOf(context).height / 75;
@@ -32,12 +35,12 @@ class _AnnouncementsState extends State<Announcements>
   Future<void> _launchURL(String urlString) async {
     final Uri url = Uri.parse(urlString);
     if (!await launchUrl(url)) {
-      displaySnackBar(' حدث خطأ ما  $url', Colors.red);
-      throw Exception('Could not launch $url');
+      displaySnackBar(' حدث خطأ ما:  $url', Colors.red);
+      throw Exception('لم يتم تحميل الرابط بسبب الخطأ:  $url');
     }
   }
 
-  bool _isLoading = true;
+  //bool _isLoading = true;
   // قائمة لحفظ البيانات
   final List<Map<dynamic, dynamic>> _itemsList = [];
 
@@ -45,51 +48,77 @@ class _AnnouncementsState extends State<Announcements>
 
   void _getDataFromFirebase() {
     // الاستماع للتغييرات في قاعدة البيانات
-    _databaseRef.child('ads').child('category').child('general').onValue.listen(
-      (event) {
-        if (event.snapshot.value != null) {
-          final Map<dynamic, dynamic> data =
-              event.snapshot.value as Map<dynamic, dynamic>;
-          _itemsList.clear();
-          data.forEach((key, value) {
-            _itemsList.add(value);
-          });
-          setState(() {
-            a = (_itemsList.length).toString();
-            _isLoading = false;
-          });
-        }
-      },
-    );
+    _databaseRef
+        .child('announcements')
+        .child('categories')
+        .child('general')
+        .onValue
+        .listen((event) {
+          if (event.snapshot.value != null) {
+            final Map<dynamic, dynamic> data =
+                event.snapshot.value as Map<dynamic, dynamic>;
+            _itemsList.clear();
+            data.forEach((key, value) {
+              _itemsList.add(value);
+            });
+            setState(() {
+              a = (_itemsList.length).toString();
+              //_isLoading = false;
+            });
+          }
+        });
   }
 
-  final List<String> _filteredItems = [];
+  //List<String> _filteredItems = [];
   @override
   void initState() {
     super.initState();
     //_filteredItems = _allItems;
-    _searchController.addListener(_filterItems);
+    //_searchController.addListener(_filterItems);
     _getDataFromFirebase();
+    loadImages();
   }
 
-  Future<void> saveLoginStatus(bool isLoggedIn) async {
+  void loadImages() async {
+    final urls = await fetchImages();
+    setState(() {
+      imageUrls = urls;
+      loading = false;
+    });
+  }
+
+  /* Future<void> saveLoginStatus(bool isLoggedIn) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('isEmailVerified', isLoggedIn);
-  }
+  }*/
 
   @override
   void dispose() {
-    _searchController.dispose();
+    //_searchController.dispose();
     super.dispose();
   }
 
-  void _filterItems() {
+  /*void _filterItems() {
     final query = _searchController.text.toLowerCase();
     setState(() {
-      /*_filteredItems = _allItems.where((item) {
+      _filteredItems = _allItems.where((item) {
         return item.toLowerCase().contains(query);
-      }).toList();*/
+      }).toList();
     });
+  }*/
+  Future<List<String>> fetchImages() async {
+    final storageRef = FirebaseStorage.instance
+        .ref()
+        .child('otaibah_main')
+        .child('navigation_menu_items')
+        .child('orders');
+    final listResult = await storageRef.listAll();
+
+    // تحويل الملفات إلى روابط تحميل
+    final urls = await Future.wait(
+      listResult.items.map((item) => item.getDownloadURL()),
+    );
+    return urls;
   }
 
   @override
@@ -102,44 +131,44 @@ class _AnnouncementsState extends State<Announcements>
             scrollDirection: Axis.vertical,
             child: Column(
               children: [
-                SizedBox(height: 12),
-                Card(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(
-                      7.0,
-                    ), // تحديد نصف قطر الدوران
+                SizedBox(height: 4),
+
+                CarouselSlider(
+                  options: CarouselOptions(
+                    height: 100, // ارتفاع السلايدر
+                    autoPlay: true, // تشغيل تلقائي
+                    autoPlayInterval: const Duration(seconds: 5), // كل 4 ثواني
+                    enlargeCenterPage: true, // تكبير الصورة النشطة قليلاً
+                    viewportFraction: 1.0, // يعرض صورة واحدة فقط
                   ),
-                  // إضافة الـ elevation يعطي تأثير الظل
-                  elevation: 0,
-                  margin: const EdgeInsets.all(8.0),
-                  child: Column(
-                    // لضبط حجم Card بناءً على محتواه
-                    mainAxisSize: MainAxisSize.max,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: <Widget>[
-                      // عرض الصورة من الإنترنت
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(10.0),
-                        child: Image.network(
-                          height: MediaQuery.sizeOf(context).height / 6,
-                          "https://b.top4top.io/p_3510xqunk1.jpg",
-                          fit: BoxFit.cover, // لجعل الصورة تغطي المساحة المتاحة
-                          // يمكنك إضافة placeholder أو مؤشر تحميل
-                          loadingBuilder: (context, child, loadingProgress) {
-                            if (loadingProgress == null) return child;
-                            return SizedBox(
-                              height:
-                                  MediaQuery.sizeOf(context).height /
-                                  6, // يمكنك تعديل الارتفاع
-                              child: Center(child: CircularProgressIndicator()),
-                            );
+                  items: imageUrls.map((url) {
+                    return Builder(
+                      builder: (BuildContext context) {
+                        return GestureDetector(
+                          onTap: () {
+                            displaySnackBar('تم الضغط', Colors.green);
                           },
-                        ),
-                      ),
-                    ],
-                  ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: Image.network(
+                              url,
+                              fit: BoxFit.cover,
+                              width: MediaQuery.of(context).size.width,
+                              loadingBuilder: (context, child, progress) {
+                                if (progress == null) return child;
+                                return Center(
+                                  child: CircularProgressIndicator(),
+                                );
+                              },
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  }).toList(),
                 ),
-                Padding(
+
+                /*Padding(
                   padding: const EdgeInsets.all(8.0),
                   child: TextField(
                     decoration: InputDecoration(
@@ -174,7 +203,7 @@ class _AnnouncementsState extends State<Announcements>
                     },
                   ),
                 ),
-
+*/
                 // مساحة فاصلة
                 const SizedBox(height: 8),
 
@@ -223,6 +252,20 @@ class _AnnouncementsState extends State<Announcements>
                                   ],
                                 ),
                               ),
+                              Spacer(),
+                              IconButton(
+                                onPressed: () => Share.share(
+                                  item['content'] +
+                                      '\n' +
+                                      'تمت مشاركة المنشور من تطبيق العتيبة..يمكنك تنزيله مجانا من الرابط www.google.com',
+                                  subject: 'تطبيق رائع',
+                                ),
+                                icon: SvgPicture.asset(
+                                  'assets/svg/share_post_icon.svg',
+                                  width: iconWidth * 3,
+                                  height: iconWidth * 3,
+                                ),
+                              ),
                             ],
                           ),
                           SizedBox(height: 8),
@@ -256,13 +299,7 @@ class _AnnouncementsState extends State<Announcements>
                                       height: iconHeight - iconHeight / 6,
                                     ),
                                   ),
-                                Spacer(),
-                                SvgPicture.asset(
-                                  'assets/svg/share_post_icon.svg',
-                                  width: iconWidth,
-                                  height: iconHeight,
-                                ),
-                                SizedBox(width: 8),
+                                /*SizedBox(width: 8),
                                 Text(item['numberOfComments'].toString()),
                                 SvgPicture.asset(
                                   'assets/svg/comment_like_icon.svg',
@@ -278,7 +315,7 @@ class _AnnouncementsState extends State<Announcements>
                                   'assets/svg/empty_like_icon.svg',
                                   width: iconWidth,
                                   height: iconHeight,
-                                ),
+                                ),*/
                               ],
                             ),
                           ),
