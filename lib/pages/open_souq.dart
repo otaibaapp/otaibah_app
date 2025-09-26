@@ -3,13 +3,15 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:firebase_dynamic_links/firebase_dynamic_links.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class OpenSouq extends StatefulWidget {
-  const OpenSouq({super.key});
+  final String? productId; // 👈 لاستقبال ID المنتج من الرابط
+  const OpenSouq({super.key, this.productId});
 
   @override
   State<OpenSouq> createState() => _OpenSouqState();
@@ -56,12 +58,25 @@ class _OpenSouqState extends State<OpenSouq>
         event.snapshot.value as Map<dynamic, dynamic>;
         _itemsList.clear();
         data.forEach((key, value) {
+          // نخزّن الـ ID مع المنتج إذا مش موجود
+          value['id'] = key;
           _itemsList.add(value);
         });
         setState(() {
           _filteredList = List.from(_itemsList); // نسخة للعرض
           a = (_itemsList.length).toString();
         });
+
+        // 👈 إذا جاي من رابط منتج، نعمل focus عليه
+        if (widget.productId != null) {
+          final match = _itemsList
+              .where((item) => item['id'].toString() == widget.productId)
+              .toList();
+          if (match.isNotEmpty) {
+            displaySnackBar("تم فتح المنتج: ${match.first['name']}",
+                Colors.green);
+          }
+        }
       }
     });
   }
@@ -120,6 +135,36 @@ class _OpenSouqState extends State<OpenSouq>
     }
   }
 
+  // 🛠️ إنشاء رابط ديناميكي لكل منتج
+  Future<String> _createDynamicLink(String productId) async {
+    try {
+      print("🚀 بدء إنشاء الرابط لـ المنتج: $productId");
+
+      final DynamicLinkParameters parameters = DynamicLinkParameters(
+        uriPrefix: "https://otaibahalt.page.link", // 👈 لازم تتأكد من نفس الرابط الموجود بديناميك لينكس Firebase
+        link: Uri.parse("https://otaibah-alt.web.app/product/$productId"),
+        androidParameters: const AndroidParameters(
+          packageName: "com.example.otaibah_app", // 👈 بدّلها بالـ package name الصحيح عندك
+        ),
+        iosParameters: const IOSParameters(
+          bundleId: "com.example.otaibahApp", // 👈 نفس الشي للـ iOS إذا محتاج
+        ),
+      );
+
+      print("📌 Parameters جهزة، جاري إنشاء الرابط...");
+
+      final ShortDynamicLink shortLink = await FirebaseDynamicLinks.instance.buildShortLink(parameters);
+
+      print("✅ رابط قصير تم إنشاؤه: ${shortLink.shortUrl}");
+
+      return shortLink.shortUrl.toString();
+    } catch (e) {
+      print("❌ خطأ داخل _createDynamicLink: $e");
+      rethrow;
+    }
+  }
+
+
   @override
   Widget build(BuildContext context) {
     final iconWidth = MediaQuery.sizeOf(context).width / 75;
@@ -136,7 +181,7 @@ class _OpenSouqState extends State<OpenSouq>
                 const SizedBox(height: 4),
                 CarouselSlider(
                   options: CarouselOptions(
-                    height: 150, // رفعنا ارتفاع السلايدر
+                    height: 150,
                     autoPlay: true,
                     autoPlayInterval: const Duration(seconds: 5),
                     enlargeCenterPage: true,
@@ -183,8 +228,8 @@ class _OpenSouqState extends State<OpenSouq>
                       hintText: "عن ماذا تبحث...",
                       prefixIcon:
                       const Icon(Icons.search, color: Colors.black38),
-                      contentPadding:
-                      const EdgeInsets.symmetric(vertical: 0, horizontal: 0),
+                      contentPadding: const EdgeInsets.symmetric(
+                          vertical: 0, horizontal: 0),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
                         borderSide: BorderSide.none,
@@ -205,7 +250,7 @@ class _OpenSouqState extends State<OpenSouq>
                     mainAxisSpacing: 6,
                     mainAxisExtent: iconHeight * 75 / 3,
                   ),
-                  itemCount: _filteredList.length, // ← القائمة المفلترة
+                  itemCount: _filteredList.length,
                   itemBuilder: (context, index) {
                     final item = _filteredList[index];
                     return GestureDetector(
@@ -213,7 +258,7 @@ class _OpenSouqState extends State<OpenSouq>
                           displaySnackBar('تم الضغط', Colors.lime),
                       child: Container(
                         decoration: BoxDecoration(
-                          color: const Color(0x20a7a9ac), // خلفية
+                          color: const Color(0x20a7a9ac),
                           borderRadius: BorderRadius.circular(7),
                         ),
                         child: Stack(
@@ -258,12 +303,24 @@ class _OpenSouqState extends State<OpenSouq>
                                         ),
                                       ),
                                       IconButton(
-                                        onPressed: () => Share.share(
-                                          (item['description'] ?? '') +
-                                              '\n' +
-                                              'تمت مشاركة المنشور من تطبيق العتيبة..يمكنك تنزيله مجانا من الرابط www.google.com',
-                                          subject: 'تطبيق رائع',
-                                        ),
+                                        onPressed: () async {
+                                          try {
+                                            print("🚀 زر المشاركة انضغط"); // Debug
+
+                                            final productId = item['id']; // تأكد إنه عندك ID بالـ item
+                                            final productLink = "https://otaibah-alt.web.app/product/$productId";
+
+                                            await Share.share(
+                                              "✨ اكتشف هذا المنتج المميز على تطبيق العُتيبة ✨\nيمكن أن يعجبك 👇\n$productLink",
+                                              subject: "تطبيق العُتيبة",
+                                            );
+
+                                            print("✅ تم تنفيذ المشاركة بدون مشاكل");
+                                          } catch (e, stack) {
+                                            print("❌ خطأ عند المشاركة: $e");
+                                            print("📌 التفاصيل: $stack");
+                                          }
+                                        },
                                         icon: SvgPicture.asset(
                                           'assets/svg/share_post_icon.svg',
                                           width: iconWidth * 3,
@@ -282,7 +339,8 @@ class _OpenSouqState extends State<OpenSouq>
                                     overflow: TextOverflow.ellipsis,
                                     style: TextStyle(
                                       fontSize:
-                                      MediaQuery.sizeOf(context).height /
+                                      MediaQuery.sizeOf(context)
+                                          .height /
                                           80,
                                     ),
                                   ),
