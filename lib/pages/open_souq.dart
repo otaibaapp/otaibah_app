@@ -1,13 +1,16 @@
 import 'dart:async';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:firebase_database/firebase_database.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:firebase_dynamic_links/firebase_dynamic_links.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
+
+import 'item_open_souq.dart';
 
 class OpenSouq extends StatefulWidget {
   final String? productId; // 👈 لاستقبال ID المنتج من الرابط
@@ -53,32 +56,34 @@ class _OpenSouqState extends State<OpenSouq>
         .child('general')
         .onValue
         .listen((event) {
-      if (event.snapshot.value != null) {
-        final Map<dynamic, dynamic> data =
-        event.snapshot.value as Map<dynamic, dynamic>;
-        _itemsList.clear();
-        data.forEach((key, value) {
-          // نخزّن الـ ID مع المنتج إذا مش موجود
-          value['id'] = key;
-          _itemsList.add(value);
-        });
-        setState(() {
-          _filteredList = List.from(_itemsList); // نسخة للعرض
-          a = (_itemsList.length).toString();
-        });
+          if (event.snapshot.value != null) {
+            final Map<dynamic, dynamic> data =
+                event.snapshot.value as Map<dynamic, dynamic>;
+            _itemsList.clear();
+            data.forEach((key, value) {
+              // نخزّن الـ ID مع المنتج إذا مش موجود
+              value['id'] = key;
+              _itemsList.add(value);
+            });
+            setState(() {
+              _filteredList = List.from(_itemsList); // نسخة للعرض
+              a = (_itemsList.length).toString();
+            });
 
-        // 👈 إذا جاي من رابط منتج، نعمل focus عليه
-        if (widget.productId != null) {
-          final match = _itemsList
-              .where((item) => item['id'].toString() == widget.productId)
-              .toList();
-          if (match.isNotEmpty) {
-            displaySnackBar("تم فتح المنتج: ${match.first['name']}",
-                Colors.green);
+            // 👈 إذا جاي من رابط منتج، نعمل focus عليه
+            if (widget.productId != null) {
+              final match = _itemsList
+                  .where((item) => item['id'].toString() == widget.productId)
+                  .toList();
+              if (match.isNotEmpty) {
+                displaySnackBar(
+                  "تم فتح المنتج: ${match.first['name']}",
+                  Colors.green,
+                );
+              }
+            }
           }
-        }
-      }
-    });
+        });
   }
 
   @override
@@ -126,8 +131,9 @@ class _OpenSouqState extends State<OpenSouq>
       setState(() {
         _filteredList = _itemsList.where((item) {
           final name = (item['name'] ?? '').toString().toLowerCase();
-          final description =
-          (item['description'] ?? '').toString().toLowerCase();
+          final description = (item['description'] ?? '')
+              .toString()
+              .toLowerCase();
           return name.contains(query.toLowerCase()) ||
               description.contains(query.toLowerCase());
         }).toList();
@@ -141,10 +147,12 @@ class _OpenSouqState extends State<OpenSouq>
       print("🚀 بدء إنشاء الرابط لـ المنتج: $productId");
 
       final DynamicLinkParameters parameters = DynamicLinkParameters(
-        uriPrefix: "https://otaibahalt.page.link", // 👈 لازم تتأكد من نفس الرابط الموجود بديناميك لينكس Firebase
+        uriPrefix:
+            "https://otaibahalt.page.link", // 👈 لازم تتأكد من نفس الرابط الموجود بديناميك لينكس Firebase
         link: Uri.parse("https://otaibah-alt.web.app/product/$productId"),
         androidParameters: const AndroidParameters(
-          packageName: "com.example.otaibah_app", // 👈 بدّلها بالـ package name الصحيح عندك
+          packageName:
+              "com.example.otaibah_app", // 👈 بدّلها بالـ package name الصحيح عندك
         ),
         iosParameters: const IOSParameters(
           bundleId: "com.example.otaibahApp", // 👈 نفس الشي للـ iOS إذا محتاج
@@ -153,7 +161,8 @@ class _OpenSouqState extends State<OpenSouq>
 
       print("📌 Parameters جهزة، جاري إنشاء الرابط...");
 
-      final ShortDynamicLink shortLink = await FirebaseDynamicLinks.instance.buildShortLink(parameters);
+      final ShortDynamicLink shortLink = await FirebaseDynamicLinks.instance
+          .buildShortLink(parameters);
 
       print("✅ رابط قصير تم إنشاؤه: ${shortLink.shortUrl}");
 
@@ -163,7 +172,6 @@ class _OpenSouqState extends State<OpenSouq>
       rethrow;
     }
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -226,10 +234,14 @@ class _OpenSouqState extends State<OpenSouq>
                       filled: true,
                       fillColor: const Color(0x20a7a9ac),
                       hintText: "عن ماذا تبحث...",
-                      prefixIcon:
-                      const Icon(Icons.search, color: Colors.black38),
+                      prefixIcon: const Icon(
+                        Icons.search,
+                        color: Colors.black38,
+                      ),
                       contentPadding: const EdgeInsets.symmetric(
-                          vertical: 0, horizontal: 0),
+                        vertical: 0,
+                        horizontal: 0,
+                      ),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
                         borderSide: BorderSide.none,
@@ -254,8 +266,14 @@ class _OpenSouqState extends State<OpenSouq>
                   itemBuilder: (context, index) {
                     final item = _filteredList[index];
                     return GestureDetector(
-                      onTap: () =>
-                          displaySnackBar('تم الضغط', Colors.lime),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => ItemInOpenSouq(data: item),
+                          ),
+                        );
+                      },
                       child: Container(
                         decoration: BoxDecoration(
                           color: const Color(0x20a7a9ac),
@@ -275,17 +293,19 @@ class _OpenSouqState extends State<OpenSouq>
                                       imageUrl: item['imgUrl'],
                                       fit: BoxFit.cover,
                                       placeholder: (context, url) =>
-                                      const Center(
-                                          child:
-                                          CircularProgressIndicator()),
+                                          const Center(
+                                            child: CircularProgressIndicator(),
+                                          ),
                                       errorWidget: (context, url, error) =>
-                                      const Icon(Icons.error),
+                                          const Icon(Icons.error),
                                     ),
                                   ),
                                 ),
                                 Padding(
                                   padding: const EdgeInsets.symmetric(
-                                      horizontal: 6, vertical: 0),
+                                    horizontal: 6,
+                                    vertical: 0,
+                                  ),
                                   child: Row(
                                     children: [
                                       Expanded(
@@ -295,8 +315,9 @@ class _OpenSouqState extends State<OpenSouq>
                                           maxLines: 1,
                                           style: TextStyle(
                                             fontSize:
-                                            MediaQuery.sizeOf(context)
-                                                .height /
+                                                MediaQuery.sizeOf(
+                                                  context,
+                                                ).height /
                                                 60,
                                             fontWeight: FontWeight.bold,
                                           ),
@@ -305,17 +326,23 @@ class _OpenSouqState extends State<OpenSouq>
                                       IconButton(
                                         onPressed: () async {
                                           try {
-                                            print("🚀 زر المشاركة انضغط"); // Debug
+                                            print(
+                                              "🚀 زر المشاركة انضغط",
+                                            ); // Debug
 
-                                            final productId = item['id']; // تأكد إنه عندك ID بالـ item
-                                            final productLink = "https://otaibah-alt.web.app/product/$productId";
+                                            final productId =
+                                                item['id']; // تأكد إنه عندك ID بالـ item
+                                            final productLink =
+                                                "https://otaibah-alt.web.app/product/$productId";
 
                                             await Share.share(
                                               "✨ اكتشف هذا المنتج المميز على تطبيق العُتيبة ✨\nيمكن أن يعجبك 👇\n$productLink",
                                               subject: "تطبيق العُتيبة",
                                             );
 
-                                            print("✅ تم تنفيذ المشاركة بدون مشاكل");
+                                            print(
+                                              "✅ تم تنفيذ المشاركة بدون مشاكل",
+                                            );
                                           } catch (e, stack) {
                                             print("❌ خطأ عند المشاركة: $e");
                                             print("📌 التفاصيل: $stack");
@@ -332,15 +359,15 @@ class _OpenSouqState extends State<OpenSouq>
                                 ),
                                 Padding(
                                   padding: const EdgeInsets.symmetric(
-                                      horizontal: 6),
+                                    horizontal: 6,
+                                  ),
                                   child: Text(
                                     item['description'],
                                     maxLines: 3,
                                     overflow: TextOverflow.ellipsis,
                                     style: TextStyle(
                                       fontSize:
-                                      MediaQuery.sizeOf(context)
-                                          .height /
+                                          MediaQuery.sizeOf(context).height /
                                           80,
                                     ),
                                   ),
@@ -353,7 +380,9 @@ class _OpenSouqState extends State<OpenSouq>
                               right: 0,
                               child: Container(
                                 padding: const EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 4),
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
                                 decoration: const BoxDecoration(
                                   color: Color(0xFF988561),
                                   borderRadius: BorderRadius.only(
@@ -385,15 +414,12 @@ class _OpenSouqState extends State<OpenSouq>
   }
 }
 
-
 /* Future<void> saveLoginStatus(bool isLoggedIn) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('isEmailVerified', isLoggedIn);
   }*/
 
-
-
-  /*void _filterItems() {
+/*void _filterItems() {
     final query = _searchController.text.toLowerCase();
     setState(() {
       _filteredItems = _allItems.where((item) {
@@ -402,8 +428,7 @@ class _OpenSouqState extends State<OpenSouq>
     });
   }*/
 
-
-                /*Padding(
+/*Padding(
                   padding: const EdgeInsets.all(8.0),
                   child: TextField(
                     decoration: InputDecoration(
@@ -439,11 +464,10 @@ class _OpenSouqState extends State<OpenSouq>
                   ),
                 ),
 */
-                // مساحة فاصلة
+// مساحة فاصلة
 
-
-                // القائمة العمودية (ListView.builder)
-                /*ListView.builder(
+// القائمة العمودية (ListView.builder)
+/*ListView.builder(
                   // خصائص لمنع تضارب التمرير
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
@@ -509,4 +533,3 @@ class _OpenSouqState extends State<OpenSouq>
                     );
                   },
                 ),*/
-
