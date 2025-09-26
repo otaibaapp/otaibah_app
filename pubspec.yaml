@@ -31,7 +31,7 @@ dependencies:
   flutter:
     sdk: flutter
   flutter_svg: ^2.0.10
-  font_awesome_flutter:
+  font_awesome_flutter: ^10.7.0
   flutter_native_splash: ^2.4.6
   shared_preferences: ^2.0.15
   cached_network_image: ^3.3.1
