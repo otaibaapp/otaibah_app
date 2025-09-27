@@ -8,10 +8,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../loading_dialog.dart';
 import '../main.dart';
+import 'Shopping.dart';
 import 'announcements.dart';
-import 'donations.dart';
-import 'online.dart';
 import 'announcements_favorites_page.dart'; // ✅ زر المفضلة يفتح هذه الصفحة
+import 'donations.dart';
 
 class Dashboard extends StatefulWidget {
   const Dashboard({super.key});
@@ -148,7 +148,7 @@ class _DashboardState extends State<Dashboard>
             children: const [
               Announcements(),
               OpenSouq(),
-              Online(),
+              Shopping(),
               Services(),
               Education(),
               Donations(),

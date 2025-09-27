@@ -180,7 +180,114 @@ class _ServicesState extends State<Services>
 
                 // مساحة فاصلة
                 const SizedBox(height: 8),
-
+                ListView.builder(
+                  // خصائص لمنع تضارب التمرير
+                  shrinkWrap: true,
+                  scrollDirection: Axis.horizontal,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: _itemsList.length,
+                  itemBuilder: (context, index) {
+                    final item = _itemsList[index];
+                    return Card(
+                      margin: const EdgeInsets.all(8.0),
+                      child: Column(
+                        children: [
+                          Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 20,
+                                backgroundImage: NetworkImage(
+                                  item['sourceImageUrl'],
+                                ),
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.all(1.0),
+                                child: Column(
+                                  children: [
+                                    Text(
+                                      item['source'],
+                                      style: TextStyle(
+                                        fontSize:
+                                            MediaQuery.sizeOf(context).height /
+                                            50,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    Text(
+                                      item['dateOfPost'],
+                                      style: TextStyle(
+                                        fontSize:
+                                            MediaQuery.sizeOf(context).height /
+                                            75,
+                                        fontWeight: FontWeight.normal,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          SizedBox(height: 8),
+                          Text(item['content']),
+                          SizedBox(height: 8),
+                          if (item['contentImgUrl'] != '')
+                            Image.network(item['contentImgUrl']),
+                          SizedBox(height: 20),
+                          Padding(
+                            padding: EdgeInsets.all(8),
+                            child: Row(
+                              children: [
+                                if (item['buttonContentUrl'] != '')
+                                  TextButton.icon(
+                                    onPressed: () {},
+                                    style: ButtonStyle(
+                                      foregroundColor:
+                                          WidgetStateProperty.all<Color>(
+                                            Colors.white,
+                                          ),
+                                      backgroundColor:
+                                          WidgetStateProperty.all<Color>(
+                                            Color(0xFF988561),
+                                          ),
+                                    ),
+                                    label: Text(item['buttonContent']),
+                                    icon: SvgPicture.asset(
+                                      'assets/svg/link_post_icon.svg',
+                                      width: iconWidth - iconWidth / 6,
+                                      height: iconHeight - iconHeight / 6,
+                                    ),
+                                  ),
+                                Spacer(),
+                                SvgPicture.asset(
+                                  'assets/svg/share_post_icon.svg',
+                                  width: iconWidth,
+                                  height: iconHeight,
+                                ),
+                                SizedBox(width: 8),
+                                Text(item['numberOfComments'].toString()),
+                                SvgPicture.asset(
+                                  'assets/svg/comment_like_icon.svg',
+                                  width: iconWidth,
+                                  height: iconHeight,
+                                ),
+                                SizedBox(width: 8),
+                                Text(
+                                  item['numberOfLoved'].toString(),
+                                  style: TextStyle(color: Colors.black),
+                                ),
+                                SvgPicture.asset(
+                                  'assets/svg/empty_like_icon.svg',
+                                  width: iconWidth,
+                                  height: iconHeight,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
                 // القائمة العمودية (ListView.builder)
                 ListView.builder(
                   // خصائص لمنع تضارب التمرير

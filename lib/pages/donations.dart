@@ -46,7 +46,7 @@ class _DonationsState extends State<Donations>
   void _getDataFromFirebase() {
     // الاستماع للتغييرات في قاعدة البيانات
     _databaseRef
-        .child('orders')
+        .child('donations')
         .child('category')
         .child('general')
         .onValue
