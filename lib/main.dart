@@ -29,6 +29,7 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         fontFamily: 'Qomra', // 👈 الخط الافتراضي
+        scaffoldBackgroundColor: Color(0xFFf6f6f6), // 👈 هذا السطر يضبط خلفية كل الشاشات
       ),
       home: const Directionality(
         textDirection: TextDirection.rtl,

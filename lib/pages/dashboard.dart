@@ -11,6 +11,7 @@ import '../main.dart';
 import 'announcements.dart';
 import 'donations.dart';
 import 'online.dart';
+import 'announcements_favorites_page.dart'; // ✅ زر المفضلة يفتح هذه الصفحة
 
 class Dashboard extends StatefulWidget {
   const Dashboard({super.key});
@@ -23,6 +24,9 @@ class _DashboardState extends State<Dashboard>
     with SingleTickerProviderStateMixin {
   TabController? controller;
   int indexSelected = 0;
+
+  // ✅ مسار أيقونة المفضلة (غيّره لأي SVG عندك داخل assets/svg)
+  static const String _favSvgPath = 'assets/svg/favorite_outline.svg';
 
   final List<String> navigationMenuItems = [
     'announcements',
@@ -65,168 +69,212 @@ class _DashboardState extends State<Dashboard>
     }
 
     return Scaffold(
+      extendBodyBehindAppBar: true,
+      backgroundColor: const Color(0xFFf6f6f6), // ✅ لون الخلفية العام
       appBar: AppBar(
         elevation: 0,
+        backgroundColor: Colors.transparent, // ✅ شفاف ليظهر اللون الخلفي
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            color: Color(0xFFf6f6f6), // ✅ نفس اللون للخلفية تحت الـ AppBar
+          ),
+        ),
+        // ✅ عنوان مع توزيع العناصر: يمين (الصورة + الترحيب) / يسار (زر المفضلة عند تبويب الإعلانات)
         title: Directionality(
           textDirection: TextDirection.rtl,
           child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const CircleAvatar(
-                radius: 20,
-                backgroundImage: NetworkImage(
-                  "https://b.top4top.io/p_3510xqunk1.jpg", // رابط صورة البروفايل
-                ),
+              // ▸ يمين: صورة البروفايل + النص
+              Row(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(17),
+                    child: Image.network(
+                      "https://l.top4top.io/p_3556413iu1.png",
+                      width: 50,
+                      height: 50,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  const Text(
+                    "مرحبا بك أحمد...!",
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 8),
-              const Text(
-                "مرحبا بك أحمد!",
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  overflow: TextOverflow.ellipsis,
+
+              // ▸ يسار: زر المفضلة (يظهر فقط عند تبويب الإعلانات)
+              if (indexSelected == 0)
+                IconButton(
+                  tooltip: 'المفضلة',
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const AnnouncementsFavoritesPage(),
+                      ),
+                    );
+                  },
+                  icon: SvgPicture.asset(
+                    _favSvgPath, // 🔸 غيّر المسار لأي SVG تحبه من مجلدك
+                    width: 25,
+                    height: 25,
+                    colorFilter: const ColorFilter.mode(
+                      Colors.black87,
+                      BlendMode.srcIn,
+                    ),
+                  ),
                 ),
-              ),
+            ],
+          ),
+        ),
+        // ❌ ما عاد نستخدم actions — لأن الزر صار داخل العنوان نفسه (يسار الصورة)
+        actions: null,
+      ),
+
+      // ✅ الجسم كامل بنفس لون الخلفية
+      body: Container(
+        color: const Color(0xFFf6f6f6),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 0, 12, 0),
+          child: TabBarView(
+            physics: const NeverScrollableScrollPhysics(),
+            controller: controller,
+            children: const [
+              Announcements(),
+              OpenSouq(),
+              Online(),
+              Services(),
+              Education(),
+              Donations(),
             ],
           ),
         ),
       ),
-      body: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 0, 12, 0),
-        child: TabBarView(
-          physics: const NeverScrollableScrollPhysics(),
-          controller: controller,
-          children: const [
-            Announcements(),
-            OpenSouq(),
-            Online(),
-            Services(),
-            Education(),
-            Donations(),
-          ],
-        ),
-      ),
+
+      // ✅ شريط التنقل السفلي بلون خلفية f6f6f6
       bottomNavigationBar: Container(
-        margin: const EdgeInsets.only(
-          left: 0,    // من اليسار
-          right: 0,   // من اليمين
-          top: 0,     // من فوق
-          bottom: 0, // من تحت
-        ),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
+        decoration: const BoxDecoration(
+          color: Color(0xFFf6f6f6), // ✅ اللون الجديد المطلوب
           boxShadow: [
             BoxShadow(
               color: Colors.black12,
-              blurRadius: 10,
-              offset: Offset(0, -2),
+              blurRadius: 0,
+              offset: Offset(0, -1),
             ),
           ],
         ),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(0),
           child: BottomNavigationBar(
+            backgroundColor: Colors.transparent, // ✅ لظهور الخلفية
+            elevation: 0,
             items: [
               BottomNavigationBarItem(
                 icon: Padding(
-                  padding: const EdgeInsets.only(top: 7), // 👈 هي المسافة البيضاء فوق الأيقونة
-                child: SvgPicture.asset(
-                  'assets/svg/announcements_icon_enabled.svg',
-                  height: iconSize,
-                  width: iconSize,
-                  colorFilter: ColorFilter.mode(
-                    indexSelected == 0
-                        ? const Color(0xFF988561)
-                        : const Color(0xFF231f20),
-                    BlendMode.srcIn,
+                  padding: const EdgeInsets.only(top: 7),
+                  child: SvgPicture.asset(
+                    'assets/svg/announcements_icon_enabled.svg',
+                    height: iconSize,
+                    width: iconSize,
+                    colorFilter: ColorFilter.mode(
+                      indexSelected == 0
+                          ? const Color(0xFF988561)
+                          : const Color(0xFF231f20),
+                      BlendMode.srcIn,
+                    ),
                   ),
-                ),
                 ),
                 label: "الإعلانات",
               ),
               BottomNavigationBarItem(
-                  icon: Padding(
-                    padding: const EdgeInsets.only(top: 5), // 👈 هي المسافة البيضاء فوق الأيقونة
-                    child: SvgPicture.asset(
-                  'assets/svg/open_souq_icon_enabled.svg',
-                  height: iconSize,
-                  width: iconSize,
-                  colorFilter: ColorFilter.mode(
-                    indexSelected == 1
-                        ? const Color(0xFF988561)
-                        : const Color(0xFF231f20),
-                    BlendMode.srcIn,
-                  ),
+                icon: Padding(
+                  padding: const EdgeInsets.only(top: 5),
+                  child: SvgPicture.asset(
+                    'assets/svg/open_souq_icon_enabled.svg',
+                    height: iconSize,
+                    width: iconSize,
+                    colorFilter: ColorFilter.mode(
+                      indexSelected == 1
+                          ? const Color(0xFF988561)
+                          : const Color(0xFF231f20),
+                      BlendMode.srcIn,
                     ),
+                  ),
                 ),
                 label: "السوق المفتوح",
               ),
               BottomNavigationBarItem(
-                  icon: Padding(
-                    padding: const EdgeInsets.only(top: 5), // 👈 هي المسافة البيضاء فوق الأيقونة
-                    child: SvgPicture.asset(
-                  'assets/svg/shopping_icon_enabled.svg',
-                  height: iconSize,
-                  width: iconSize,
-                  colorFilter: ColorFilter.mode(
-                    indexSelected == 2
-                        ? const Color(0xFF988561)
-                        : const Color(0xFF231f20),
-                    BlendMode.srcIn,
+                icon: Padding(
+                  padding: const EdgeInsets.only(top: 5),
+                  child: SvgPicture.asset(
+                    'assets/svg/shopping_icon_enabled.svg',
+                    height: iconSize,
+                    width: iconSize,
+                    colorFilter: ColorFilter.mode(
+                      indexSelected == 2
+                          ? const Color(0xFF988561)
+                          : const Color(0xFF231f20),
+                      BlendMode.srcIn,
+                    ),
                   ),
                 ),
-                  ),
                 label: "التسوق",
               ),
               BottomNavigationBarItem(
-                  icon: Padding(
-                    padding: const EdgeInsets.only(top: 5), // 👈 هي المسافة البيضاء فوق الأيقونة
-                    child: SvgPicture.asset(
-                  'assets/svg/services_icon_enabled.svg',
-                  height: iconSize,
-                  width: iconSize,
-                  colorFilter: ColorFilter.mode(
-                    indexSelected == 3
-                        ? const Color(0xFF988561)
-                        : const Color(0xFF231f20),
-                    BlendMode.srcIn,
+                icon: Padding(
+                  padding: const EdgeInsets.only(top: 5),
+                  child: SvgPicture.asset(
+                    'assets/svg/services_icon_enabled.svg',
+                    height: iconSize,
+                    width: iconSize,
+                    colorFilter: ColorFilter.mode(
+                      indexSelected == 3
+                          ? const Color(0xFF988561)
+                          : const Color(0xFF231f20),
+                      BlendMode.srcIn,
+                    ),
                   ),
                 ),
-                  ),
                 label: "الخدمات",
               ),
               BottomNavigationBarItem(
-                  icon: Padding(
-                    padding: const EdgeInsets.only(top: 5), // 👈 هي المسافة البيضاء فوق الأيقونة
-                    child: SvgPicture.asset(
-                  'assets/svg/education_icon_enabled.svg',
-                  height: iconSize,
-                  width: iconSize,
-                  colorFilter: ColorFilter.mode(
-                    indexSelected == 4
-                        ? const Color(0xFF988561)
-                        : const Color(0xFF231f20),
-                    BlendMode.srcIn,
+                icon: Padding(
+                  padding: const EdgeInsets.only(top: 5),
+                  child: SvgPicture.asset(
+                    'assets/svg/education_icon_enabled.svg',
+                    height: iconSize,
+                    width: iconSize,
+                    colorFilter: ColorFilter.mode(
+                      indexSelected == 4
+                          ? const Color(0xFF988561)
+                          : const Color(0xFF231f20),
+                      BlendMode.srcIn,
+                    ),
                   ),
                 ),
-                  ),
                 label: "التعليم",
               ),
               BottomNavigationBarItem(
-                  icon: Padding(
-                    padding: const EdgeInsets.only(top: 5), // 👈 هي المسافة البيضاء فوق الأيقونة
-                    child: SvgPicture.asset(
-                  'assets/svg/free_stuffs_nav_bar_icon.svg',
-                  height: iconSize,
-                  width: iconSize,
-                  colorFilter: ColorFilter.mode(
-                    indexSelected == 5
-                        ? const Color(0xFF988561)
-                        : const Color(0xFF231f20),
-                    BlendMode.srcIn,
+                icon: Padding(
+                  padding: const EdgeInsets.only(top: 5),
+                  child: SvgPicture.asset(
+                    'assets/svg/free_stuffs_nav_bar_icon.svg',
+                    height: iconSize,
+                    width: iconSize,
+                    colorFilter: ColorFilter.mode(
+                      indexSelected == 5
+                          ? const Color(0xFF988561)
+                          : const Color(0xFF231f20),
+                      BlendMode.srcIn,
+                    ),
                   ),
                 ),
-                  ),
                 label: "ببلاش",
               ),
             ],
