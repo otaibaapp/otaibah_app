@@ -531,7 +531,7 @@ class _ShoppingState extends State<Shopping>
                 ),
 
                 SizedBox(
-                  height: 45, // حدد ارتفاع للقائمة الأفقية
+                  height: 45, // ارتفاع للقائمة الأفقية
                   child: ListView.builder(
                     scrollDirection: Axis.horizontal,
                     // خصائص لمنع تضارب التمرير
