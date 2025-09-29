@@ -8,9 +8,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../loading_dialog.dart';
 import '../main.dart';
+import 'Shopping.dart';
 import 'announcements.dart';
 import 'donations.dart';
-import 'online.dart';
 import 'announcements_favorites_page.dart'; // ✅ مفضلة الإعلانات
 import 'favorites_page.dart'; // ✅ مفضلة السوق المفتوح
 
@@ -26,7 +26,7 @@ class _DashboardState extends State<Dashboard>
   TabController? controller;
   int indexSelected = 0;
 
-  // ✅ مسارات أيقونات المفضلات
+  // ✅ مسار أيقونة المفضلة
   static const String _favSvgPath = 'assets/svg/favorite_outline.svg';
 
   final List<String> navigationMenuItems = [
@@ -179,7 +179,7 @@ class _DashboardState extends State<Dashboard>
             children: const [
               Announcements(),
               OpenSouq(),
-              Online(),
+              Shopping(),
               Services(),
               Education(),
               Donations(),

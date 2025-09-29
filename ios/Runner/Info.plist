@@ -29,6 +29,10 @@
 	<key>UIMainStoryboardFile</key>
 	<string>Main</string>
 	<key>UISupportedInterfaceOrientations</key>
+	<key>NSCameraUsageDescription</key>
+    <string>نحتاج إذن الكاميرا لاختيار الصورة</string>
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>نحتاج إذن الوصول إلى الصور لاختيار الصورة</string>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
 		<string>UIInterfaceOrientationLandscapeLeft</string>

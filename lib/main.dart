@@ -29,6 +29,9 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         fontFamily: 'Qomra', // 👈 الخط الافتراضي
+        progressIndicatorTheme: const ProgressIndicatorThemeData(
+          color: Color(0x25000000), // ← هنا لون الـ progress bar
+        ),
         scaffoldBackgroundColor: Color(
           0xFFf6f6f6,
         ), // 👈 هذا السطر يضبط خلفية كل الشاشات

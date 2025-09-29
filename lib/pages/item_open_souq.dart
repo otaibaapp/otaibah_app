@@ -82,9 +82,9 @@ class ItemInOpenSouq extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 8),
                   child: ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(7),
                     child: AspectRatio(
-                      aspectRatio: 16 / 9,
+                      aspectRatio: 1 / 1,
                       child: CachedNetworkImage(
                         imageUrl: data['imgUrl'],
                         fit: BoxFit.cover,
@@ -319,87 +319,9 @@ class ItemInOpenSouq extends StatelessWidget {
                     ],
                   ),
                 ),
-
-                const SizedBox(height: 90), // فراغ قبل الأزرار السفلية
               ],
             ),
           ),
-        ),
-      ),
-
-      // ======= الزرين أسفل الشاشة =======
-      bottomNavigationBar: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        child: Row(
-          children: [
-            // زر الإبلاغ عن المنتج
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text("تم استلام بلاغك، شكرًا لتعاونك."),
-                    ),
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF4a151e),
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(7),
-                  ),
-                ),
-                icon: SvgPicture.asset(
-                  'assets/svg/flag.svg',
-                  width: 22,
-                  height: 22,
-                  colorFilter: const ColorFilter.mode(
-                    Color(0xFFf6f6f6),
-                    BlendMode.srcIn,
-                  ),
-                ),
-                label: const Text(
-                  "الإبلاغ عن المنتج",
-                  style: TextStyle(
-                    color: Color(0xFFf6f6f6),
-                    fontSize: 15,
-                  ),
-                ),
-              ),
-            ),
-
-            const SizedBox(width: 8),
-
-            // زر مشاركة المنتج
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: shareProduct,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF054239),
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(7),
-                  ),
-                ),
-                icon: SvgPicture.asset(
-                  'assets/svg/share.svg',
-                  width: 22,
-                  height: 22,
-                  colorFilter: const ColorFilter.mode(
-                    Color(0xFFf6f6f6),
-                    BlendMode.srcIn,
-                  ),
-                ),
-                label: const Text(
-                  "مشاركة المنتج",
-                  style: TextStyle(
-                    color: Color(0xFFf6f6f6),
-                    fontSize: 15,
-                  ),
-                ),
-              ),
-            ),
-          ],
         ),
       ),
     );

@@ -12,7 +12,6 @@ import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_linkify/flutter_linkify.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
 import 'app_identity.dart';
 import 'favorites_page.dart'; // يخص السوق (لن نستخدمه هنا لكن لن ألمسه)
 import 'announcements_favorites_page.dart'; // صفحة مفضّلة المنشورات
@@ -459,13 +458,14 @@ class _AnnouncementsState extends State<Announcements>
                                     color: Color(0xFF988561),
                                     borderRadius: BorderRadius.only(
                                       topRight: Radius.circular(7),
+                                      bottomLeft: Radius.circular(7), // 👈 أضف هذه السطر
                                     ),
                                   ),
                                   child: const Text(
                                     "إعلان مُمَوّل",
                                     style: TextStyle(
                                       color: Color(0xFFedebdf),
-                                      fontSize: 12,
+                                      fontSize: 8,
                                       fontWeight: FontWeight.w400,
                                     ),
                                   ),
@@ -549,7 +549,7 @@ class _AnnouncementsState extends State<Announcements>
                           color: Colors.transparent,
                           elevation: 0,
                           margin: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 3),
+                              horizontal: 2, vertical: 5),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(7),
                           ),
@@ -560,31 +560,44 @@ class _AnnouncementsState extends State<Announcements>
                               // ===== الهيدر =====
                               Padding(
                                 padding:
-                                    const EdgeInsets.fromLTRB(0, 10, 0, 0),
+                                    const EdgeInsets.fromLTRB(0, 0, 0, 0),
                                 child: Row(
                                   crossAxisAlignment: CrossAxisAlignment.center,
                                   children: [
-                                    ClipRRect(
-                                      borderRadius: BorderRadius.circular(15),
-                                      child: Image.network(
-                                        (item['sourceImageUrl'] ?? '').toString(),
-                                        width: 50,
-                                        height: 50,
-                                        fit: BoxFit.cover,
-                                        errorBuilder: (_, __, ___) => Container(
-                                          width: 50,
-                                          height: 50,
-                                          decoration: BoxDecoration(
-                                            color: Colors.grey[300],
-                                            borderRadius:
-                                                BorderRadius.circular(15),
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(horizontal: 0.0), // 👈 مسافة يمين ويسار
+                                      child: GestureDetector(
+                                        onTap: () {
+                                          final img = (item['sourceImageUrl'] ?? '').toString();
+                                          if (img.isNotEmpty) _openImageFullscreen(img);
+                                        },
+                                        child: Hero(
+                                          tag: (item['sourceImageUrl'] ?? '').toString(),
+                                          child: ClipRRect(
+                                            borderRadius: BorderRadius.circular(7),
+                                            child: Image.network(
+                                              (item['sourceImageUrl'] ?? '').toString(),
+                                              width: 50,
+                                              height: 50,
+                                              fit: BoxFit.cover,
+                                              errorBuilder: (_, __, ___) => Container(
+                                                width: 50,
+                                                height: 50,
+                                                decoration: BoxDecoration(
+                                                  color: Colors.grey[300],
+                                                  borderRadius: BorderRadius.circular(7),
+                                                ),
+                                                child: const Icon(
+                                                  Icons.image_not_supported,
+                                                  color: Colors.grey,
+                                                ),
+                                              ),
+                                            ),
                                           ),
-                                          child: const Icon(
-                                              Icons.image_not_supported,
-                                              color: Colors.grey),
                                         ),
                                       ),
                                     ),
+
                                     const SizedBox(width: 8),
                                     Expanded(
                                       child: Column(
@@ -597,7 +610,7 @@ class _AnnouncementsState extends State<Announcements>
                                               fontSize:
                                                   MediaQuery.sizeOf(context)
                                                           .height /
-                                                      50,
+                                                      55,
                                               fontWeight: FontWeight.w500,
                                             ),
                                           ),
@@ -608,7 +621,7 @@ class _AnnouncementsState extends State<Announcements>
                                               fontSize:
                                                   MediaQuery.sizeOf(context)
                                                           .height /
-                                                      75,
+                                                      80,
                                               color: Colors.black54,
                                             ),
                                           ),
@@ -667,7 +680,7 @@ class _AnnouncementsState extends State<Announcements>
                                 ),
                               ),
 
-                              const SizedBox(height: 8),
+                              const SizedBox(height: 7),
 
                               // ===== النص =====
                               Padding(
@@ -688,7 +701,7 @@ class _AnnouncementsState extends State<Announcements>
                                 ),
                               ),
 
-                              const SizedBox(height: 10),
+                              const SizedBox(height: 7),
 
                               // ===== الصورة =====
                               if (imgUrl.isNotEmpty)
@@ -828,12 +841,14 @@ class _AnnouncementsState extends State<Announcements>
                             ],
                           ),
                         ),
-                        const Divider(
-                          color: Color(0x50000000),
-                          thickness: 0.9,
-                          indent: 12,
-                          endIndent: 12,
-                        ),
+                        // 👇 فقط لو لم يكن آخر منشور
+                        if (index != _filteredList.length - 1)
+                          const Divider(
+                            color: Color(0x50000000),
+                            thickness: 0.9,
+                            indent: 0,
+                            endIndent: 0,
+                          ),
                       ],
                     );
                   },

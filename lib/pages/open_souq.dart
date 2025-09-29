@@ -5,8 +5,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'item_open_souq.dart';
-import 'package:flutter_svg/svg.dart';
 
 class OpenSouq extends StatefulWidget {
   final String? productId;
@@ -16,8 +16,7 @@ class OpenSouq extends StatefulWidget {
   State<OpenSouq> createState() => _OpenSouqState();
 }
 
-class _OpenSouqState extends State<OpenSouq>
-    with SingleTickerProviderStateMixin {
+class _OpenSouqState extends State<OpenSouq> with SingleTickerProviderStateMixin {
   final TextEditingController _searchController = TextEditingController();
   List<String> imageUrls = [];
   bool loading = true;
@@ -39,11 +38,11 @@ class _OpenSouqState extends State<OpenSouq>
     loadImages();
   }
 
-  /// 🧠 تحميل قائمة المفضلات من Firebase
+  /// ✅ تحميل المفضلات الخاصة بالسوق المفتوح فقط
   Future<void> _loadFavoritesFromFirebase() async {
     if (user == null) return;
     final favRef =
-    FirebaseDatabase.instance.ref("users/${user!.uid}/favorites");
+    FirebaseDatabase.instance.ref("open_souq_favorites/${user!.uid}");
     final snapshot = await favRef.get();
     if (snapshot.exists && snapshot.value is Map) {
       final data = snapshot.value as Map;
@@ -53,19 +52,19 @@ class _OpenSouqState extends State<OpenSouq>
     }
   }
 
-  /// 💾 تحديث الحالة داخل Firebase
-  Future<void> _updateFavoriteInFirebase(String productId, bool isFav) async {
+  /// ✅ تحديث المفضلات في Firebase
+  Future<void> _updateFavoriteInFirebase(String productId, bool add) async {
     if (user == null) return;
     final favRef = FirebaseDatabase.instance
-        .ref("users/${user!.uid}/favorites/$productId");
-    if (isFav) {
+        .ref("open_souq_favorites/${user!.uid}/$productId");
+    if (add) {
       await favRef.set(true);
     } else {
       await favRef.remove();
     }
   }
 
-  /// 📸 تحميل صور البانر
+  /// ✅ تحميل صور البانر
   void loadImages() async {
     final urls = await fetchImages();
     if (mounted) {
@@ -86,7 +85,7 @@ class _OpenSouqState extends State<OpenSouq>
     return urls;
   }
 
-  /// 🔄 تحميل بيانات السوق من Firebase
+  /// ✅ تحميل بيانات السوق من Firebase
   void _getDataFromFirebase() {
     _databaseRef.child('open_souq/categories/general').onValue.listen((event) {
       if (event.snapshot.value != null) {
@@ -96,7 +95,7 @@ class _OpenSouqState extends State<OpenSouq>
         data.forEach((key, value) {
           if (value is Map) {
             value['id'] = key;
-            _itemsList.add(value);
+            _itemsList.add(Map<dynamic, dynamic>.from(value));
           }
         });
         setState(() => _filteredList = List.from(_itemsList));
@@ -121,7 +120,7 @@ class _OpenSouqState extends State<OpenSouq>
     });
   }
 
-  /// ❤️ تفعيل / إلغاء المفضلة + حفظ مباشر في Firebase
+  /// ❤️ تفعيل / إلغاء المفضلة
   void toggleFavorite(String productId) async {
     final isFav = favoriteIds.contains(productId);
     setState(() {
@@ -134,7 +133,7 @@ class _OpenSouqState extends State<OpenSouq>
     await _updateFavoriteInFirebase(productId, !isFav);
   }
 
-  /// 🧭 انتقال ناعم لصفحة المنتج
+  /// 🧭 فتح صفحة المنتج
   void _openProductPage(Map<dynamic, dynamic> item) {
     Navigator.push(
       context,
@@ -179,7 +178,6 @@ class _OpenSouqState extends State<OpenSouq>
             child: Column(
               children: [
                 const SizedBox(height: 7),
-
                 // ===== البانر =====
                 CarouselSlider(
                   options: CarouselOptions(
@@ -222,13 +220,14 @@ class _OpenSouqState extends State<OpenSouq>
                                     color: Color(0xFF988561),
                                     borderRadius: BorderRadius.only(
                                       topRight: Radius.circular(7),
+                                      bottomLeft: Radius.circular(7),
                                     ),
                                   ),
                                   child: const Text(
                                     "إعلان مُمَوّل",
                                     style: TextStyle(
                                       color: Color(0xFFedebdf),
-                                      fontSize: 12,
+                                      fontSize: 8,
                                       fontWeight: FontWeight.w400,
                                     ),
                                   ),
@@ -241,7 +240,6 @@ class _OpenSouqState extends State<OpenSouq>
                     );
                   }).toList(),
                 ),
-
                 const SizedBox(height: 4),
 
                 // ===== مربع البحث =====
@@ -264,7 +262,8 @@ class _OpenSouqState extends State<OpenSouq>
                         fontWeight: FontWeight.bold,
                       ),
                       prefixIcon: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 10),
                         child: SvgPicture.asset(
                           'assets/svg/search.svg',
                           width: 22,
@@ -279,16 +278,15 @@ class _OpenSouqState extends State<OpenSouq>
                         borderRadius: BorderRadius.circular(8),
                         borderSide: BorderSide.none,
                       ),
-                      contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 10),
                     ),
                   ),
                 ),
 
+                const SizedBox(height: 4),
 
-                const SizedBox(height: 2),
-
-                // شبكة المنتجات
+                // ===== شبكة المنتجات =====
                 GridView.builder(
                   physics: const NeverScrollableScrollPhysics(),
                   padding: const EdgeInsets.all(0),
@@ -330,9 +328,7 @@ class _OpenSouqState extends State<OpenSouq>
                                       imageUrl: item['imgUrl'],
                                       fit: BoxFit.cover,
                                       placeholder: (context, url) =>
-                                      const Center(
-                                          child:
-                                          CircularProgressIndicator()),
+                                      const Center(child: CircularProgressIndicator()),
                                       errorWidget: (context, url, error) =>
                                       const Icon(Icons.error),
                                     ),
@@ -347,8 +343,7 @@ class _OpenSouqState extends State<OpenSouq>
                                     maxLines: 1,
                                     style: TextStyle(
                                       fontSize:
-                                      MediaQuery.sizeOf(context).height /
-                                          60,
+                                      MediaQuery.sizeOf(context).height / 60,
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
@@ -362,9 +357,8 @@ class _OpenSouqState extends State<OpenSouq>
                                     overflow: TextOverflow.ellipsis,
                                     style: TextStyle(
                                       fontSize:
-                                      MediaQuery.sizeOf(context).height /
-                                          85,
-                                      color: Colors.grey[800],
+                                      MediaQuery.sizeOf(context).height / 85,
+                                      color: Colors.grey[900],
                                       height: 1.25,
                                     ),
                                   ),
@@ -392,7 +386,7 @@ class _OpenSouqState extends State<OpenSouq>
                                       TextSpan(
                                         text: '${item['price']} ',
                                         style: const TextStyle(
-                                          color: Colors.white,
+                                          color: Color(0xFFfffcee),
                                           fontWeight: FontWeight.bold,
                                           fontSize: 15,
                                         ),
@@ -400,7 +394,7 @@ class _OpenSouqState extends State<OpenSouq>
                                       const TextSpan(
                                         text: 'ل.س',
                                         style: TextStyle(
-                                          color: Colors.white,
+                                          color: Color(0xFFfffcee),
                                           fontWeight: FontWeight.bold,
                                           fontSize: 13,
                                         ),
@@ -418,8 +412,7 @@ class _OpenSouqState extends State<OpenSouq>
                               child: GestureDetector(
                                 onTap: () => toggleFavorite(item['id']),
                                 child: AnimatedContainer(
-                                  duration:
-                                  const Duration(milliseconds: 300),
+                                  duration: const Duration(milliseconds: 300),
                                   decoration: BoxDecoration(
                                     color: Colors.black.withOpacity(0.25),
                                     borderRadius: BorderRadius.circular(7),
@@ -430,7 +423,7 @@ class _OpenSouqState extends State<OpenSouq>
                                         ? Icons.favorite
                                         : Icons.favorite_border,
                                     color: Colors.white,
-                                    size: 20,
+                                    size: 17,
                                   ),
                                 ),
                               ),
@@ -441,6 +434,8 @@ class _OpenSouqState extends State<OpenSouq>
                     );
                   },
                 ),
+                // ✅ مسافة صغيرة أسفل آخر عنصر
+                const SizedBox(height: 10),
               ],
             ),
           ),
