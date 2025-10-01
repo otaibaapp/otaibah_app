@@ -124,6 +124,76 @@ class _ShoppingState extends State<Shopping>
     _getCategories();
   }
 
+  // ✅ فلترة حسب القسم
+  void _filterByCategory(String? category) {
+    setState(() {
+      _selectedCategory = category;
+
+      if (category == null) {
+        // نادرًا ما نستخدم null الآن، لكنها fallback
+        _visibleShops = List<Map<dynamic, dynamic>>.from(shopsDetails);
+        return;
+      }
+
+      if (category == "مختارة لك") {
+        _visibleShops = shopsDetails.where((m) {
+          final s = m['order']?.toString().trim() ?? "";
+          return s.isNotEmpty && int.tryParse(s) != null;
+        }).toList()
+          ..sort((a, b) {
+            final ao = int.tryParse(a['order'].toString()) ?? 9999;
+            final bo = int.tryParse(b['order'].toString()) ?? 9999;
+            return ao.compareTo(bo);
+          });
+        return;
+      }
+
+      // فلترة حسب الفئة الأصلية
+      _visibleShops = shopsDetails
+          .where((shop) => shop['category']?.toString() == category)
+          .toList()
+        ..sort((a, b) {
+          final ao = int.tryParse(a['order']?.toString() ?? "") ?? 9999;
+          final bo = int.tryParse(b['order']?.toString() ?? "") ?? 9999;
+          return ao.compareTo(bo);
+        });
+    });
+  }
+
+
+  // ✅ بحث حسب الاسم أو الوصف
+  void _filterSearch(String query) {
+    final lower = query.toLowerCase();
+
+    // حدّد القائمة الأساسية بحسب التبويب المختار
+    List<Map<dynamic, dynamic>> base;
+    if (_selectedCategory == null) {
+      base = List<Map<dynamic, dynamic>>.from(shopsDetails);
+    } else if (_selectedCategory == "مختارة لك") {
+      base = shopsDetails.where((m) {
+        final s = m['order']?.toString().trim() ?? "";
+        return s.isNotEmpty && int.tryParse(s) != null;
+      }).toList();
+    } else {
+      base = shopsDetails
+          .where((m) => m['category']?.toString() == _selectedCategory)
+          .toList();
+    }
+
+    setState(() {
+      if (lower.isEmpty) {
+        _visibleShops = base;
+      } else {
+        _visibleShops = base.where((m) {
+          final name = m['name']?.toString().toLowerCase() ?? "";
+          return name.contains(lower);
+        }).toList();
+      }
+    });
+  }
+
+
+
   Future<void> _bootstrap() async {
     // 1) نحصل على هوية المستخدم (UID أو deviceId)
     _userId = await AppIdentity.getStableUserId();
@@ -140,7 +210,7 @@ class _ShoppingState extends State<Shopping>
 
     // 5) بحث محلي
     _searchController.addListener(() {
-      _filterItems(_searchController.text);
+      _filterSearch(_searchController.text);
     });
   }
 
@@ -386,35 +456,85 @@ class _ShoppingState extends State<Shopping>
     if (mounted) setState(() {});
   }
 
+  String? _selectedCategory; // القسم الحالي المختار
+  List<Map<dynamic, dynamic>> _visibleShops = []; // المتاجر المعروضة بعد الفلترة والبحث
+
   String a = '';
 
   Future<void> _getCategories() async {
     shopsDetails.clear();
-    await _databaseRef.child('shopping').child('categories').once().then((
-      DatabaseEvent event,
-    ) {
-      final data = event.snapshot.value as Map?;
-      if (data != null) {
-        shopsCategoryNames = data.keys.toList();
-      }
-    });
-    for (int i = 0; i < shopsCategoryNames.length; i++) {
-      final snapshot = await _databaseRef
-          .child("shopping")
-          .child("categories")
-          .child(shopsCategoryNames[i])
-          .get();
-      if (snapshot.exists) {
-        final data = snapshot.value as Map;
-        for (var key in data.values) {
-          shopsDetails.add(key);
-        }
+    shopsCategoryNames.clear();
+
+    // ✅ "مختارة لك" ثابتة دائمًا كأول تبويب (قائمة افتراضية)
+    shopsCategoryNames.add("مختارة لك");
+
+    // 🔹 حمّل الفئات من Firebase
+    final catsEvent = await _databaseRef.child('shopping').child('categories').once();
+    final catsMap = catsEvent.snapshot.value as Map?;
+    final List<String> allCats = catsMap == null
+        ? []
+        : catsMap.keys.map((e) => e.toString()).toList()..sort((a, b) => a.compareTo(b));
+
+    // أضف باقي الفئات بعد "مختارة لك"
+    // نتأكد ما نكرّر "مختارة لك" لو كانت موجودة فعلاً داخل الفايربيز
+    for (final c in allCats) {
+      if (c != "مختارة لك") {
+        shopsCategoryNames.add(c);
       }
     }
+
+    // 🔹 حمّل المتاجر من كل فئة
+    final List<Map<dynamic, dynamic>> allStores = [];
+    for (final cat in allCats) {
+      final snap = await _databaseRef.child("shopping").child("categories").child(cat).get();
+      if (!snap.exists) continue;
+
+      final raw = Map<dynamic, dynamic>.from(snap.value as Map);
+      raw.forEach((id, val) {
+        if (val is! Map) return; // ← تجاهل مفاتيح مثل "_init": true
+        final m = Map<dynamic, dynamic>.from(val as Map);
+        m['id'] = id.toString();
+        // ثبّت الفئة داخل المتجر لو غير موجودة
+        m['category'] = (m['category']?.toString().isNotEmpty ?? false) ? m['category'] : cat;
+        allStores.add(m);
+      });
+    }
+
+    // 🔹 ترتيب عام حسب order (القيم الفارغة تروح آخر شي)
+    int asOrder(Map m) {
+      final v = m['order'];
+      if (v == null) return 9999;
+      if (v is int) return v;
+      return int.tryParse(v.toString()) ?? 9999;
+    }
+    allStores.sort((a, b) => asOrder(a).compareTo(asOrder(b)));
+
+    // ✅ المتاجر المميزة "مختارة لك" = كل متجر عنده order رقمي
+    final List<Map<dynamic, dynamic>> featured = allStores.where((m) {
+      final o = m['order'];
+      if (o == null) return false;
+      final s = o.toString().trim();
+      return s.isNotEmpty && int.tryParse(s) != null;
+    }).toList()
+      ..sort((a, b) {
+        final ao = int.tryParse(a['order'].toString()) ?? 9999;
+        final bo = int.tryParse(b['order'].toString()) ?? 9999;
+        return ao.compareTo(bo);
+      });
+
     setState(() {
-      a = '${shopsCategoryNames.length}';
+      shopsDetails = allStores;
+      _selectedCategory = "مختارة لك"; // 👈 اختيار افتراضي
+      _visibleShops = featured.isNotEmpty ? featured : allStores;
     });
+
+    // للمتابعة في الديبَغ إن لزم
+    // print("cats: $shopsCategoryNames");
+    // print("allStores: ${shopsDetails.length}, featured: ${featured.length}");
   }
+
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -562,168 +682,373 @@ class _ShoppingState extends State<Shopping>
                   ),
                 ),
                 SizedBox(
-                  height: 45, // ارتفاع للقائمة الأفقية
+                  height: 45,
                   child: ListView.builder(
                     scrollDirection: Axis.horizontal,
-                    // خصائص لمنع تضارب التمرير
-                    shrinkWrap: true,
-                    physics:
-                        const ClampingScrollPhysics(), // يسمح بالتمرير الأفقي
+                    physics: const ClampingScrollPhysics(),
                     itemCount: shopsCategoryNames.length,
                     itemBuilder: (context, index) {
-                      return Card(
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(
-                            7.0,
-                          ), // تحديد نصف قطر الدوران
-                        ),
-                        // إضافة الـ elevation يعطي تأثير الظل
-                        elevation: 0,
-                        child: TextButton(
-                          onPressed: () {},
-                          child: Text(shopsCategoryNames[index]),
+                      bool isSelected = _selectedCategory == shopsCategoryNames[index]; // ← غيّر لاحقًا حسب الحالة
+
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 0),
+                        child: Card(
+                          color: isSelected
+                              ? const Color(0x20a7a9ac) // اللون الذهبي عند التحديد
+                              : const Color(0x20a7a9ac), // خلفية فاتحة عادية
+                          elevation: isSelected ? 0 : 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(4.0),
+                          ),
+                          child: TextButton(
+                            style: TextButton.styleFrom(
+                              foregroundColor:
+                              isSelected ? Color(0xFF000000) : const Color(0xFF000000),
+                              padding:
+                              const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            ),
+                            onPressed: () {
+                              final selected = shopsCategoryNames[index];
+                              if (_selectedCategory == selected) {
+                                _filterByCategory(null); // إلغاء التحديد لو ضغط نفس القسم
+                              } else {
+                                _filterByCategory(selected);
+                              }
+                            },
+
+                            child: Text(
+                              shopsCategoryNames[index],
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: isSelected ? FontWeight.w500 : FontWeight.w400,
+                              ),
+                            ),
+                          ),
                         ),
                       );
                     },
                   ),
                 ),
-                SizedBox(height: 15),
-                SizedBox(height: 15),
+
                 // القائمة العمودية (ListView.builder)
+                // ===== قائمة المتاجر =====
                 ListView.builder(
-                  // خصائص لمنع تضارب التمرير
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
-                  itemCount: shopsDetails.length,
+                  itemCount: _visibleShops.length,
                   itemBuilder: (context, index) {
+                    final shop = _visibleShops[index];
+
+                    // حماية من القيم الفارغة
+                    if (shop == null || shop.isEmpty) {
+                      return const SizedBox.shrink();
+                    }
+
+                    final String name = shop['name']?.toString() ?? '';
+                    final String category = shop['category']?.toString() ?? '';
+                    final String imageUrl = shop['imageUrl']?.toString() ?? '';
+                    final String discount = shop['discountText']?.toString() ?? '';
+                    final String deliveryTime = shop['deliveryTime']?.toString() ?? '';
+                    final String deliveryMethod = shop['deliveryMethod']?.toString() ?? '';
+                    final String openTime = shop['openTime']?.toString() ?? '';
+                    final String closeTime = shop['closeTime']?.toString() ?? '';
+                    final String description = shop['description']?.toString() ?? '';
+                    final bool verified = shop['verified'] == true;
+
                     return GestureDetector(
-                      onTap: () {},
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 350),
-                        curve: Curves.easeInOut,
+                      onTap: () {
+                        // يمكنك لاحقاً فتح صفحة تفاصيل المتجر
+                      },
+                      child: Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 0, vertical: 4),
                         decoration: BoxDecoration(
-                          color: const Color(0x20a7a9ac),
+                          color: Color(0x20a7a9ac),
                           borderRadius: BorderRadius.circular(7),
+                          boxShadow: [
+                          ],
                         ),
-                        child: Stack(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                SizedBox(
-                                  height: 180,
-                                  width: double.infinity,
-                                  child: ClipRRect(
-                                    borderRadius: const BorderRadius.only(
-                                      topLeft: Radius.circular(7),
-                                      topRight: Radius.circular(7),
-                                    ),
-                                    child: CachedNetworkImage(
-                                      imageUrl: shopsDetails[index].values
-                                          .elementAt(0)['imgUrl']
-                                          .toString(),
-                                      fit: BoxFit.cover,
-                                      placeholder: (context, url) =>
-                                          const Center(
-                                            child: CircularProgressIndicator(),
+                            // 🖼️ صورة المتجر مع شارات (جديد / خصم)
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                              child: ClipRRect(
+                                borderRadius: const BorderRadius.only(
+                                  topLeft: Radius.circular(7),
+                                  topRight: Radius.circular(7),
+                                  bottomLeft: Radius.circular(7),
+                                  bottomRight: Radius.circular(7),
+                                ),
+                                child: Stack(
+                                  children: [
+                                    AspectRatio(
+                                      aspectRatio: 2.35,
+                                      child: Image.network(
+                                        imageUrl,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (_, __, ___) => Container(
+                                          color: Colors.grey[300],
+                                          child: const Center(
+                                            child: Icon(Icons.store, size: 60, color: Colors.white),
                                           ),
-                                      errorWidget: (context, url, error) =>
-                                          const Icon(Icons.error),
+                                        ),
+                                      ),
                                     ),
-                                  ),
+
+                                    // 🔹 شارة "خصم"
+                                    if (discount.isNotEmpty)
+                                      Positioned(
+                                        top: 0,
+                                        left: 0,
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+                                          child: Row(
+                                            children: [
+                                              Image.asset(
+                                                'assets/images/discount_icon_above.png',
+                                                width: 45,
+                                                height: 45,
+                                                fit: BoxFit.contain,
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+
+                                    // 🔸 شارة "جديد"
+                                    if (shop['createdAt'] != null)
+                                      Builder(builder: (context) {
+                                        final createdAt = DateTime.tryParse(shop['createdAt']);
+                                        final now = DateTime.now();
+                                        final isNew = createdAt != null &&
+                                            now.difference(createdAt).inDays <= 30;
+                                        if (!isNew) return const SizedBox.shrink();
+
+                                        return Positioned(
+                                          top: 0,
+                                          right: 0,
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 0),
+                                            child: Row(
+                                              children: [
+                                                Image.asset(
+                                                  'assets/images/new_icon.png',
+                                                  width: 40,
+                                                  height: 40,
+                                                  fit: BoxFit.contain,
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        );
+                                      }),
+                                  ],
                                 ),
-                                Padding(
-                                  padding: const EdgeInsets.only(
-                                    top: 6,
-                                    left: 6,
-                                    right: 6,
-                                    bottom: 2,
-                                  ),
-                                  child: Text(
-                                    shopsDetails[index].values
-                                        .elementAt(0)['category']
-                                        .toString(),
-                                    overflow: TextOverflow.ellipsis,
-                                    maxLines: 1,
-                                    style: TextStyle(
-                                      fontSize:
-                                          MediaQuery.sizeOf(context).height /
-                                          60,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 6,
-                                    vertical: 2,
-                                  ),
-                                  child: Text(
-                                    shopsDetails[index].values
-                                        .elementAt(0)['name']
-                                        .toString(),
-                                    maxLines: 3,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      fontSize:
-                                          MediaQuery.sizeOf(context).height /
-                                          85,
-                                      color: Colors.grey[800],
-                                      height: 1.25,
-                                    ),
-                                  ),
-                                ),
-                              ],
+                              ),
                             ),
 
-                            // السعر
-                            Positioned(
-                              bottom: 0,
-                              right: 0,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 4,
-                                ),
-                                decoration: const BoxDecoration(
-                                  color: Color(0xFF988561),
-                                  borderRadius: BorderRadius.only(
-                                    topLeft: Radius.circular(12),
-                                    bottomRight: Radius.circular(12),
-                                  ),
-                                ),
-                                child: Text(
-                                  shopsDetails[index].values
-                                      .elementAt(0)['name']
-                                      .toString(),
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                            // ======================= محتوى التفاصيل =======================
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                              child: Directionality( // 👈 يجعل الاتجاه RTL مضبوط
+                                textDirection: TextDirection.rtl,
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    // ✅ العمود الأيمن (الاسم + التوثيق + الوصف + الخصم)
+                                    Expanded(
+                                      flex: 1,
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start, // الآن يصبح لليمين في RTL
+                                        children: [
+                                          // الاسم + التوثيق
+                                          Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Flexible(
+                                                child: Text(
+                                                  name,
+                                                  style: const TextStyle(
+                                                    fontSize: 16,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: Colors.black87,
+                                                  ),
+                                                  overflow: TextOverflow.ellipsis,
+                                                ),
+                                              ),
+                                              if (verified) ...[
+                                                const SizedBox(width: 2),
+                                                Transform.translate(
+                                                  offset: const Offset(0, -8),
+                                                  child: SvgPicture.asset(
+                                                    'assets/svg/verified.svg',
+                                                    width: 13,
+                                                    height: 13,
+                                                  ),
+                                                ),
+                                              ],
+                                            ],
+                                          ),
+
+                                          const SizedBox(height: 4),
+
+                                          // 🔹 الوصف
+                                          SizedBox(
+                                            width: MediaQuery.of(context).size.width * 0.5,
+                                            child: Text(
+                                              description,
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              textAlign: TextAlign.right,
+                                              style: const TextStyle(
+                                                fontSize: 11,
+                                                color: Colors.black,
+                                                height: 1.3,
+                                              ),
+                                            ),
+                                          ),
+
+                                          const SizedBox(height: 6),
+
+                                          // 🔸 الخصم
+                                          if (discount.isNotEmpty)
+                                            Stack(
+                                              clipBehavior: Clip.none,
+                                              children: [
+                                                // صندوق الخصم – أضفنا padding يمين ليفسح مكان الأيقونة
+                                                Container(
+                                                  margin: const EdgeInsets.only(top: 4),
+                                                  padding: const EdgeInsets.only(
+                                                    right: 30,      // ← مساحة ثابتة للأيقونة
+                                                    left: 10,
+                                                    top: 5,
+                                                    bottom: 5,
+                                                  ),
+                                                  decoration: BoxDecoration(
+                                                    color: const Color(0xFF6b1f2a),
+                                                    borderRadius: BorderRadius.circular(6),
+                                                  ),
+                                                  child: Text(
+                                                    discount,
+                                                    style: const TextStyle(
+                                                      color: Color(0xFFedebe0),
+                                                      fontSize: 10,
+                                                      fontWeight: FontWeight.w400,
+                                                    ),
+                                                    overflow: TextOverflow.ellipsis,
+                                                  ),
+                                                ),
+
+                                                // الأيقونة داخل حدود الصندوق (بدون خروج يمين)
+                                                Positioned(
+                                                  right: 3,   // ← بدل -4 حتى تبقى داخل الصندوق
+                                                  top: -0,    // بروز خفيف للأعلى
+                                                  child: Image.asset(
+                                                    'assets/images/discount_icon.png',
+                                                    width: 25,
+                                                    height: 25,
+                                                    fit: BoxFit.contain,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+
+                                        ],
+                                      ),
+                                    ),
+
+                                    const SizedBox(width: 0),
+
+
+                                    // ✅ العمود الأيسر (التوصيل + أوقات العمل)
+                                    // ✅ العمود الأيسر (التوصيل + أوقات العمل)
+                                    Expanded(
+                                      flex: 1,
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.end, // لأن التطبيق RTL
+                                        children: [
+                                          // 1️⃣ مدة التوصيل
+                                          Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            mainAxisAlignment: MainAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                'خلال $deliveryTime ${deliveryTime == "1" ? "دقيقة" : "دقائق"}',
+                                                style: const TextStyle(
+                                                  fontSize: 12,
+                                                  color: Colors.black,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 6),
+                                              Image.asset(
+                                                'assets/images/time_delivery.png',
+                                                width: 15,
+                                                height: 15,
+                                                fit: BoxFit.contain,
+                                              ),
+                                            ],
+                                          ),
+
+                                          const SizedBox(height: 6),
+
+                                          // 2️⃣ طريقة التوصيل
+                                          Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            mainAxisAlignment: MainAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                'عبر $deliveryMethod',
+                                                style: const TextStyle(
+                                                  fontSize: 12,
+                                                  color: Colors.black,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 6),
+                                              Image.asset(
+                                                'assets/images/delivery_method.png',
+                                                width: 15,
+                                                height: 15,
+                                                fit: BoxFit.contain,
+                                              ),
+                                            ],
+                                          ),
+
+                                          const SizedBox(height: 6),
+
+                                          // 3️⃣ أوقات العمل
+                                          if (openTime.isNotEmpty && closeTime.isNotEmpty)
+                                            Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              mainAxisAlignment: MainAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  'من $openTime إلى $closeTime',
+                                                  style: const TextStyle(
+                                                    fontSize: 12,
+                                                    color: Colors.black,
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 6),
+                                                Image.asset(
+                                                  'assets/images/clock.png',
+                                                  width: 15,
+                                                  height: 15,
+                                                  fit: BoxFit.contain,
+                                                ),
+                                              ],
+                                            ),
+                                        ],
+                                      ),
+                                    ),
+
+                                  ],
                                 ),
                               ),
                             ),
                           ],
                         ),
-                      ),
-                    );
-
-                    return Center(
-                      child: Column(
-                        children: [
-                          Text(
-                            (shopsDetails[index].values
-                                .elementAt(0)['category']
-                                .toString()),
-                            style: TextStyle(color: Colors.black, fontSize: 16),
-                          ),
-                          Text(
-                            (shopsDetails[index].values
-                                .elementAt(0)['name']
-                                .toString()),
-                            style: TextStyle(color: Colors.black, fontSize: 16),
-                          ),
-                        ],
                       ),
                     );
                   },
