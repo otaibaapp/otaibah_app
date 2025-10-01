@@ -23,6 +23,10 @@ class _ShoppingState extends State<Shopping>
     with SingleTickerProviderStateMixin {
   // ===== بيانات الواجهة =====
   List<String> imageUrls = [];
+  List<dynamic> shopsCategoryNames = [];
+  List<dynamic> shopsWithAllDetails = [];
+  List<dynamic> shopsNames = [];
+  List<Map<dynamic, dynamic>> shopsDetails = [];
   bool loading = true;
 
   double get iconWidth => MediaQuery.sizeOf(context).width / 75;
@@ -117,6 +121,7 @@ class _ShoppingState extends State<Shopping>
   void initState() {
     super.initState();
     _bootstrap();
+    _getCategories();
   }
 
   Future<void> _bootstrap() async {
@@ -156,7 +161,7 @@ class _ShoppingState extends State<Shopping>
         final List<dynamic> decoded = jsonDecode(postsJson);
         final List<Map<dynamic, dynamic>> localPosts = decoded
             .whereType<Map>()
-            .map((m) => Map<dynamic, dynamic>.from(m as Map))
+            .map((m) => Map<dynamic, dynamic>.from(m))
             .toList();
         setState(() {
           _itemsList = localPosts;
@@ -381,6 +386,36 @@ class _ShoppingState extends State<Shopping>
     if (mounted) setState(() {});
   }
 
+  String a = '';
+
+  Future<void> _getCategories() async {
+    shopsDetails.clear();
+    await _databaseRef.child('shopping').child('categories').once().then((
+      DatabaseEvent event,
+    ) {
+      final data = event.snapshot.value as Map?;
+      if (data != null) {
+        shopsCategoryNames = data.keys.toList();
+      }
+    });
+    for (int i = 0; i < shopsCategoryNames.length; i++) {
+      final snapshot = await _databaseRef
+          .child("shopping")
+          .child("categories")
+          .child(shopsCategoryNames[i])
+          .get();
+      if (snapshot.exists) {
+        final data = snapshot.value as Map;
+        for (var key in data.values) {
+          shopsDetails.add(key);
+        }
+      }
+    }
+    setState(() {
+      a = '${shopsCategoryNames.length}';
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -418,7 +453,6 @@ class _ShoppingState extends State<Shopping>
             child: Column(
               children: [
                 const SizedBox(height: 7),
-
                 // ===== البانر =====
                 CarouselSlider(
                   options: CarouselOptions(
@@ -482,9 +516,7 @@ class _ShoppingState extends State<Shopping>
                     );
                   }).toList(),
                 ),
-
                 const SizedBox(height: 4),
-
                 // ===== مربع البحث =====
                 Padding(
                   padding: const EdgeInsets.symmetric(
@@ -529,7 +561,6 @@ class _ShoppingState extends State<Shopping>
                     ),
                   ),
                 ),
-
                 SizedBox(
                   height: 45, // ارتفاع للقائمة الأفقية
                   child: ListView.builder(
@@ -538,7 +569,7 @@ class _ShoppingState extends State<Shopping>
                     shrinkWrap: true,
                     physics:
                         const ClampingScrollPhysics(), // يسمح بالتمرير الأفقي
-                    itemCount: 100,
+                    itemCount: shopsCategoryNames.length,
                     itemBuilder: (context, index) {
                       return Card(
                         shape: RoundedRectangleBorder(
@@ -550,21 +581,21 @@ class _ShoppingState extends State<Shopping>
                         elevation: 0,
                         child: TextButton(
                           onPressed: () {},
-                          child: Text(index.toString()),
+                          child: Text(shopsCategoryNames[index]),
                         ),
                       );
                     },
                   ),
                 ),
-                SizedBox(height: 5),
+                SizedBox(height: 15),
+                SizedBox(height: 15),
                 // القائمة العمودية (ListView.builder)
                 ListView.builder(
                   // خصائص لمنع تضارب التمرير
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
-                  itemCount: _itemsList.length,
+                  itemCount: shopsDetails.length,
                   itemBuilder: (context, index) {
-                    final item = _itemsList[index];
                     return GestureDetector(
                       onTap: () {},
                       child: AnimatedContainer(
@@ -588,7 +619,9 @@ class _ShoppingState extends State<Shopping>
                                       topRight: Radius.circular(7),
                                     ),
                                     child: CachedNetworkImage(
-                                      imageUrl: item['imgUrl'],
+                                      imageUrl: shopsDetails[index].values
+                                          .elementAt(0)['imgUrl']
+                                          .toString(),
                                       fit: BoxFit.cover,
                                       placeholder: (context, url) =>
                                           const Center(
@@ -607,7 +640,9 @@ class _ShoppingState extends State<Shopping>
                                     bottom: 2,
                                   ),
                                   child: Text(
-                                    item['name'],
+                                    shopsDetails[index].values
+                                        .elementAt(0)['category']
+                                        .toString(),
                                     overflow: TextOverflow.ellipsis,
                                     maxLines: 1,
                                     style: TextStyle(
@@ -624,7 +659,9 @@ class _ShoppingState extends State<Shopping>
                                     vertical: 2,
                                   ),
                                   child: Text(
-                                    item['description'],
+                                    shopsDetails[index].values
+                                        .elementAt(0)['name']
+                                        .toString(),
                                     maxLines: 3,
                                     overflow: TextOverflow.ellipsis,
                                     style: TextStyle(
@@ -656,7 +693,9 @@ class _ShoppingState extends State<Shopping>
                                   ),
                                 ),
                                 child: Text(
-                                  item['price'],
+                                  shopsDetails[index].values
+                                      .elementAt(0)['name']
+                                      .toString(),
                                   style: const TextStyle(
                                     color: Colors.white,
                                     fontWeight: FontWeight.bold,
@@ -664,9 +703,27 @@ class _ShoppingState extends State<Shopping>
                                 ),
                               ),
                             ),
-                            // ❤️ زر المفضلة
                           ],
                         ),
+                      ),
+                    );
+
+                    return Center(
+                      child: Column(
+                        children: [
+                          Text(
+                            (shopsDetails[index].values
+                                .elementAt(0)['category']
+                                .toString()),
+                            style: TextStyle(color: Colors.black, fontSize: 16),
+                          ),
+                          Text(
+                            (shopsDetails[index].values
+                                .elementAt(0)['name']
+                                .toString()),
+                            style: TextStyle(color: Colors.black, fontSize: 16),
+                          ),
+                        ],
                       ),
                     );
                   },
