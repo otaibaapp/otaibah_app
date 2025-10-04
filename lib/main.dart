@@ -28,7 +28,7 @@ class MyApp extends StatelessWidget {
       title: 'العتيبة',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        fontFamily: 'Qomra', // 👈 الخط الافتراضي
+        fontFamily: 'PortadaAra', // 👈 الخط الافتراضي
         progressIndicatorTheme: const ProgressIndicatorThemeData(
           color: Color(0x25000000), // ← هنا لون الـ progress bar
         ),
@@ -152,14 +152,14 @@ class _MyStatefulWidgetState extends State<MyStatefulWidget> {
                                 text: 'تطبيق العتيبة: ',
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
-                                  fontFamily: 'Qomra',
+                                  fontFamily: 'PortadaAra',
                                   color: Colors.black,
                                 ),
                               ),
                               TextSpan(
                                 style: TextStyle(
                                   color: Colors.black,
-                                  fontFamily: 'Qomra',
+                                  fontFamily: 'PortadaAra',
                                 ),
                                 text:
                                     'منصة تجمع كل خدمات البلدة في مكان واحد, الطب, التعليم, الدعم, التواصل, الإعلانات.. كل ماتحتاجه لحياة أسهل',

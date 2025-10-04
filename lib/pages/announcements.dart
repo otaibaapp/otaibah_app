@@ -584,7 +584,7 @@ class _AnnouncementsState extends State<Announcements>
                                                 width: 50,
                                                 height: 50,
                                                 decoration: BoxDecoration(
-                                                  color: Colors.grey[300],
+                                                  color: Colors.black,
                                                   borderRadius: BorderRadius.circular(7),
                                                 ),
                                                 child: const Icon(

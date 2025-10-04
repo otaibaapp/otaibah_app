@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:ui'; // 👈 للـ ImageFilter.blur
-
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:firebase_database/firebase_database.dart';
@@ -9,8 +8,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
-
 import 'app_identity.dart';
+import 'shop_page.dart';
 
 class Shopping extends StatefulWidget {
   const Shopping({super.key});
@@ -757,8 +756,14 @@ class _ShoppingState extends State<Shopping>
 
                     return GestureDetector(
                       onTap: () {
-                        // يمكنك لاحقاً فتح صفحة تفاصيل المتجر
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => ShopPage(shopData: shop),
+                          ),
+                        );
                       },
+
                       child: Container(
                         margin: const EdgeInsets.symmetric(horizontal: 0, vertical: 4),
                         decoration: BoxDecoration(

@@ -48,6 +48,12 @@ dependencies:
   shimmer: ^3.0.0
   image_picker: ^1.1.2
   flutter_image_compress: ^2.3.0
+  # مكتبة خرائط غوغل
+  google_maps_flutter: ^2.6.0
+  # مكتبة الموقع (GPS)
+  geolocator: ^11.0.0
+  # مكتبة العناوين (تحويل LatLng إلى اسم شارع/مدينة)
+  geocoding: ^3.0.0
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
@@ -107,6 +113,17 @@ flutter:
           weight: 700
         - asset: assets/fonts/Qomra-Black.ttf
           weight: 900
+
+    - family: PortadaAra
+      fonts:
+        - asset: assets/fonts/portadaara-light.ttf
+          weight: 300
+        - asset: assets/fonts/portadaara-regular.otf
+          weight: 400
+        - asset: assets/fonts/portadaara-semibold.otf
+          weight: 600
+        - asset: assets/fonts/portadaara-bold.otf
+          weight: 700
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
