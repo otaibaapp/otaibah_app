@@ -11,6 +11,9 @@ import 'package:url_launcher/url_launcher.dart';
 import 'app_identity.dart';
 import 'shop_page.dart';
 
+import 'my_orders_page.dart';
+import 'order_tracking_page.dart';
+
 class Shopping extends StatefulWidget {
   const Shopping({super.key});
 
@@ -565,7 +568,9 @@ class _ShoppingState extends State<Shopping>
 
 
        */
-      body: SafeArea(
+      body: Stack(
+        children: [
+      SafeArea(
         child: Directionality(
           textDirection: TextDirection.rtl,
           child: SingleChildScrollView(
@@ -1061,6 +1066,63 @@ class _ShoppingState extends State<Shopping>
               ],
             ),
           ),
+        ),
+      ),
+
+          // ===== الأزرار السفلية (طلباتي + تتبع الطلب) =====
+          Positioned(
+            bottom: 20,
+            left: 8,
+            child: Row(
+              children: [
+                _floatingSquareButton(Icons.receipt_long, "طلباتي", () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const MyOrdersPage()),
+                  );
+                }),
+                const SizedBox(width: 12),
+                _floatingSquareButton(Icons.local_shipping, "تتبع الطلب", () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const OrderTrackingPage(orderId: 'none')),
+                  );
+                }),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _floatingSquareButton(IconData icon, String label, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 60,
+        height: 60,
+        decoration: BoxDecoration(
+          color: Color(0xfff6f6f6),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 5,
+              offset: const Offset(0, 0),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: Colors.black, size: 26),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+            ),
+          ],
         ),
       ),
     );

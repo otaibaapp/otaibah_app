@@ -89,11 +89,77 @@ class _ShopPageState extends State<ShopPage> {
   @override
   void initState() {
     super.initState();
-    _loadShop();
+
+    // 🔹 تشغيل البحث اللحظي
     _searchController.addListener(() {
       setState(() => _query = _searchController.text.trim().toLowerCase());
     });
+
+    // 🔹 تحميل أولي سريع
+    _loadShop();
+
+    // 🔹 استماع مباشر لتغيرات المنتجات فقط
+    final productsRef = FirebaseDatabase.instance.ref(
+      "otaibah_navigators_taps/shopping/categories/${widget.shopData['category']}/${widget.shopData['id']}/products",
+    );
+
+    productsRef.onValue.listen((event) {
+      if (!mounted) return;
+
+      if (event.snapshot.exists) {
+        final data = Map<String, dynamic>.from(event.snapshot.value as Map);
+        final sortedProducts = data.entries.map((e) {
+          final p = Map<String, dynamic>.from(e.value);
+          p['id'] = e.key;
+          return p;
+        }).toList()
+          ..sort((a, b) => (a['order'] ?? 0).compareTo(b['order'] ?? 0));
+
+        setState(() {
+          products = sortedProducts;
+        });
+      } else {
+        setState(() {
+          products = [];
+        });
+      }
+    });
+
+    // 🟢🟢🟢 أضف هذا الجزء الجديد هنا 👇👇👇
+    final categoriesRef = FirebaseDatabase.instance.ref(
+      "otaibah_navigators_taps/shopping/categories/${widget.shopData['category']}/${widget.shopData['id']}/categories",
+    );
+
+    categoriesRef.onValue.listen((event) {
+      if (!mounted) return;
+
+      if (event.snapshot.exists) {
+        final cats = Map<String, dynamic>.from(event.snapshot.value as Map);
+        final catList = cats.entries.map((e) {
+          final val = (e.value is Map) ? Map<String, dynamic>.from(e.value) : {};
+          return {
+            "id": e.key.toString(),
+            "order": val["order"] ?? 0,
+          };
+        }).toList()
+          ..sort((a, b) => (a["order"] ?? 0).compareTo(b["order"] ?? 0));
+
+        setState(() {
+          categories = cats;
+          _categoryKeys = catList.map((c) => c["id"].toString()).toList();
+        });
+      } else {
+        setState(() {
+          categories = {};
+          _categoryKeys = [];
+        });
+      }
+    });
+    // 🟢🟢🟢 نهاية الجزء الجديد
   }
+
+
+
 
   @override
   void dispose() {
@@ -934,7 +1000,7 @@ class _ProductCard extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    fontWeight: FontWeight.w500,
+                    fontWeight: FontWeight.w700,
                     fontSize: 14,
                   ),
                   textAlign: TextAlign.right,
@@ -944,23 +1010,30 @@ class _ProductCard extends StatelessWidget {
 
             const SizedBox(height: 4),
 
-            // وصف
+            // وصف ثابت الارتفاع ومحاذاة من الأعلى واليمين
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: Align(
-                alignment: Alignment.centerRight,
-                child: Text(
-                  desc,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: Colors.black,
+              child: SizedBox(
+                height: 32, // 👈 مساحة سطرين ثابتة
+                child: Align(
+                  alignment: Alignment.topRight, // 👈 من الأعلى واليمين دائمًا
+                  child: Text(
+                    desc,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.right, // 👈 النص لليمين
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: Colors.black,
+                      height: 1.3, // مسافة السطرين
+                    ),
                   ),
-                  textAlign: TextAlign.right,
                 ),
               ),
             ),
+
+
+
 
             const SizedBox(height: 6),
 

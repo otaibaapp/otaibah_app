@@ -1,16 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
-
 import 'full_map_page.dart';
+import 'package:otaibah_app/services/notification_sender.dart';
+
+import 'package:firebase_database/firebase_database.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
+import 'package:flutter/services.dart';
+
+
+import 'order_tracking_page.dart';
+//import 'package:intl/intl.dart';
 
 class CheckoutPage extends StatefulWidget {
   final String shopId;
   final String shopName;
   final int deliveryTime;
   final double total;
+  final List<Map<String, dynamic>> cartItems; // 👈 هذا السطر المهم
+  final String? note; // ✅ هذا هو الجديد
 
   const CheckoutPage({
     super.key,
@@ -18,6 +30,8 @@ class CheckoutPage extends StatefulWidget {
     required this.shopName,
     required this.deliveryTime,
     required this.total,
+    required this.cartItems,
+    this.note,
   });
 
   @override
@@ -25,15 +39,13 @@ class CheckoutPage extends StatefulWidget {
 }
 
 class _CheckoutPageState extends State<CheckoutPage> {
-  GoogleMapController? _mapController;
   LatLng? _selectedLocation;
   String _autoAddress = "جارِ تحديد الموقع...";
   Map<String, String>? _manualAddressData;
   String _paymentMethod = "نقدًا عند الاستلام";
 
   // مركز العتيبة
-  final LatLng otaibahCenter =
-  const LatLng(33.48378590169768, 36.606306415046895);
+  final LatLng otaibahCenter = LatLng(33.4837859, 36.6063064);
   final double allowedRadius = 2000; // مترين كم
 
   final String _mapStyle = '''
@@ -177,30 +189,57 @@ class _CheckoutPageState extends State<CheckoutPage> {
                   _input("تسمية العنوان", "منزل عائلة فلان", label),
 
                   const SizedBox(height: 14),
+
+
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
                       onPressed: () {
+                        final phoneText = phone.text.trim();
+
+                        // 🔹 التحقق من رقم الهاتف
+                        final phoneRegex = RegExp(r'^09\d{8}$'); // يبدأ بـ 09 + 8 أرقام
+
+                        if (!phoneRegex.hasMatch(phoneText)) {
+                          ScaffoldMessenger.of(ctx).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                "❌ الرقم غير صحيح! يجب أن يبدأ بـ 09 ويتكون من 10 أرقام فقط.",
+                                textDirection: TextDirection.rtl,
+                              ),
+                              backgroundColor: Colors.redAccent,
+                              duration: Duration(seconds: 3),
+                            ),
+                          );
+                          return;
+                        }
+
+                        // ✅ إذا الرقم صحيح → نحفظ العنوان
                         setState(() {
                           _manualAddressData = {
                             "الحارة": hara.text,
                             "المنزل": house.text,
                             "الشارع": street.text,
-                            "الهاتف": phone.text,
+                            "الهاتف": phoneText,
                             "ملاحظات": note.text,
                             "تسمية": label.text,
                           };
                           print("✅ عنوان يدوي محفوظ: $_manualAddressData");
                         });
+
                         Navigator.pop(ctx);
                       },
                       style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.black,
-                          padding: const EdgeInsets.symmetric(vertical: 14)),
-                      child: const Text("حفظ العنوان",
-                          style: TextStyle(color: Colors.white)),
+                        backgroundColor: Colors.black,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                      child: const Text(
+                        "حفظ العنوان",
+                        style: TextStyle(color: Colors.white),
+                      ),
                     ),
                   ),
+
                 ],
               ),
             ),
@@ -217,6 +256,12 @@ class _CheckoutPageState extends State<CheckoutPage> {
       child: TextField(
         controller: c,
         keyboardType: type,
+        inputFormatters: type == TextInputType.phone
+            ? [
+          FilteringTextInputFormatter.digitsOnly,
+          LengthLimitingTextInputFormatter(10),
+        ]
+            : null,
         decoration: InputDecoration(
           labelText: label,
           hintText: hint,
@@ -231,6 +276,16 @@ class _CheckoutPageState extends State<CheckoutPage> {
     );
   }
 
+
+  // 👇 حطها هون بعد } للـ onPressed، وقبل build()
+  String _monthName(int month) {
+    const months = [
+      "كانون الثاني", "شباط", "آذار", "نيسان", "أيار", "حزيران",
+      "تموز", "آب", "أيلول", "تشرين الأول", "تشرين الثاني", "كانون الأول"
+    ];
+    return months[month - 1];
+  }
+
   @override
   Widget build(BuildContext context) {
     // رسوم ثابتة
@@ -242,6 +297,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
     final totalWithDiscount = totalWithoutDiscount;
     final saving = 0.0;
     final grandTotal = widget.total;
+
 
     return Directionality(
       textDirection: TextDirection.rtl,
@@ -297,25 +353,36 @@ class _CheckoutPageState extends State<CheckoutPage> {
                         height: 200,
                         child: Stack(
                           children: [
-                            GoogleMap(
-                              initialCameraPosition: CameraPosition(
-                                target: otaibahCenter,
-                                zoom: 14,
+                            FlutterMap(
+                              options: MapOptions(
+                                initialCenter: _selectedLocation ?? otaibahCenter,
+                                initialZoom: 15,
+                                onTap: (tapPos, latLng) {
+                                  setState(() => _selectedLocation = latLng);
+                                },
                               ),
-                              onMapCreated: (c) => c.setMapStyle(_mapStyle),
-                              markers: _selectedLocation != null
-                                  ? {
-                                Marker(
-                                  markerId: const MarkerId("sel"),
-                                  position: _selectedLocation!,
-                                )
-                              }
-                                  : {},
-                              zoomControlsEnabled: false,
-                              scrollGesturesEnabled: false,
-                              rotateGesturesEnabled: false,
-                              tiltGesturesEnabled: false,
+                              children: [
+                                TileLayer(
+                                  urlTemplate: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+                                  userAgentPackageName: 'com.otaibah.app',
+                                ),
+                                MarkerLayer(
+                                  markers: [
+                                    Marker(
+                                      point: _selectedLocation ?? otaibahCenter,
+                                      width: 60,
+                                      height: 60,
+                                      child: const Icon(
+                                        Icons.location_pin,
+                                        color: Color(0xFF988561),
+                                        size: 50,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
                             ),
+
 
                             // 👇 Overlay شفاف فوق الخريطة للنقر
                             Positioned.fill(
@@ -327,18 +394,25 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                       context,
                                       MaterialPageRoute(
                                         builder: (_) => FullMapPage(
-                                          initialLocation: _selectedLocation ?? otaibahCenter,
-                                          isInsideOtaibah: _isInsideOtaibah,
-                                          mapStyle: _mapStyle,
-                                          pinAsset: "assets/svg/pin.svg",
+                                          onConfirm: (pos) {
+                                            setState(() {
+                                              _selectedLocation = pos;
+                                            });
+                                          },
                                         ),
                                       ),
                                     );
-                                    if (result != null && result is LatLng) {
+
+
+                                    if (result != null && result is Map) {
                                       setState(() {
-                                        _selectedLocation = result;
+                                        _selectedLocation = LatLng(result["lat"], result["lng"]);
+                                        _manualAddressData = {
+                                          "المنزل": result["houseCode"] ?? "",
+                                          "ملاحظات": result["notes"] ?? "",
+                                          "الهاتف": result["phone"] ?? "",
+                                        };
                                       });
-                                      _getAddress(result);
                                     }
                                   },
                                 ),
@@ -483,9 +557,10 @@ class _CheckoutPageState extends State<CheckoutPage> {
                         width: 20, height: 20),
                     const SizedBox(width: 10),
                     Expanded(
-                      child: Text("سيصل طلبك خلال ${widget.deliveryTime} دقيقة",
-                          style: const TextStyle(
-                              fontSize: 14, color: Colors.black87)),
+                      child: Text(
+                        "سيصل طلبك خلال ${widget.deliveryTime + 10} دقيقة تقريباً",
+                        style: const TextStyle(fontSize: 14, color: Colors.black87),
+                      ),
                     ),
                   ],
                 ),
@@ -523,6 +598,28 @@ class _CheckoutPageState extends State<CheckoutPage> {
               ),
 
               const SizedBox(height: 20),
+              const Text("رقم الهاتف للتواصل",
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              const SizedBox(height: 6),
+
+              TextField(
+                keyboardType: TextInputType.phone,
+                onChanged: (v) => setState(() {
+                  _manualAddressData ??= {};
+                  _manualAddressData!["رقم الهاتف"] = v;
+                }),
+                decoration: InputDecoration(
+                  hintText: "أدخل رقم هاتفك (إجباري)",
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(7),
+                    borderSide: const BorderSide(color: Colors.black26),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 20),
 
               // 💵 ملخص الدفع
               const Text("ملخص الدفع",
@@ -550,14 +647,200 @@ class _CheckoutPageState extends State<CheckoutPage> {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: () {
-                    final chosenAddress = _manualAddressData != null
-                        ? _manualAddressData.toString()
-                        : _autoAddress;
+                  onPressed: () async {
+                    final user = FirebaseAuth.instance.currentUser;
+                    if (user == null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text("يجب تسجيل الدخول لإرسال الطلب")),
+                      );
+                      return;
+                    }
 
-                    // هون مثلاً بتطبع أو بتخزن في Firebase
-                    print("📌 العنوان المعتمد: $chosenAddress");
-                  },
+                    // 🔹 تحقق من رقم الهاتف قبل إرسال الطلب
+                    final phoneText = _manualAddressData?["رقم الهاتف"]?.trim() ?? "";
+
+                    // إذا المستخدم ما كتب رقم
+                    if (phoneText.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            "⚠️ يرجى إدخال رقم الهاتف قبل إرسال الطلب.",
+                            textDirection: TextDirection.rtl,
+                          ),
+                          backgroundColor: Colors.redAccent,
+                        ),
+                      );
+                      return;
+                    }
+
+                    // 🔹 تحقق من صيغة الرقم
+                    final phoneRegex = RegExp(r'^09\d{8}$'); // يبدأ بـ09 وطوله 10 أرقام
+                    if (!phoneRegex.hasMatch(phoneText)) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            "❌ الرقم غير صحيح! يجب أن يبدأ بـ 09 ويتكوّن من 10 أرقام فقط.",
+                            textDirection: TextDirection.rtl,
+                          ),
+                          backgroundColor: Colors.redAccent,
+                        ),
+                      );
+                      return;
+                    }
+
+                    // ✅ إذا الرقم صحيح نكمل
+                    final db = FirebaseDatabase.instance;
+                    final userDataSnap = await db.ref("otaibah_users/${user.uid}").get();
+                    final userName = userDataSnap.child("name").value?.toString() ??
+                        (user.displayName ?? "مستخدم");
+
+                    final userPhone = phoneText; // 👈 استخدم الرقم المدخل من المستخدم
+
+
+                    if (user == null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text("يجب تسجيل الدخول لإرسال الطلب")),
+                        );
+                        return;
+                      }
+
+
+                      // توليد رقم طلب تسلسلي مثل OT00001
+                      final ordersRef = db.ref("orders");
+                      final lastSnap = await ordersRef.limitToLast(1).get();
+                      int nextNumber = 1;
+                      if (lastSnap.exists) {
+                        final lastOrder = lastSnap.children.first;
+                        final lastRef = (lastOrder.child("referenceNumber").value ?? "OT00000").toString();
+                        final numPart = int.tryParse(lastRef.replaceAll("OT", "")) ?? 0;
+                        nextNumber = numPart + 1;
+                      }
+                      final referenceNumber = "OT${nextNumber.toString().padLeft(5, '0')}";
+
+                      // 🔹 قراءة الأصناف من السلة
+                      final cartRef = db.ref("carts/${user.uid}/${widget.shopId}"); // ✅ جمع
+                      final cartSnap = await cartRef.get();
+
+                      if (!cartSnap.exists) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text("سلتك فارغة")),
+                        );
+                        return;
+                      }
+
+                      final items = <String, dynamic>{};
+                      double subtotal = 0;
+
+                      for (int i = 0; i < widget.cartItems.length; i++) {
+                        final item = widget.cartItems[i];
+                        final price = (item["price"] ?? 0).toDouble();
+                        final qty = (item["qty"] ?? 1).toDouble();
+
+                        items["item_${i + 1}"] = {
+                          "name": item["name"],
+                          "qty": qty,
+                          "price": price,
+                          "total": price * qty,
+                        };
+
+                        subtotal += price * qty;
+                      }
+
+
+                      const serviceFee = 100.0;
+                      const deliveryFee = 5000.0;
+                      final grandTotal = subtotal + serviceFee + deliveryFee;
+
+                      final chosenAddress = _manualAddressData != null
+                          ? _manualAddressData
+                          : {"العنوان": _autoAddress};
+
+                      final orderRef = ordersRef.push();
+
+                      final now = DateTime.now();
+                      final formattedDate =
+                          "${now.day} تشرين ${_monthName(now.month)} ${now.year}، ${now.hour}:${now.minute.toString().padLeft(2, '0')}";
+
+                      final orderData = {
+                        "orderId": orderRef.key,
+                        "referenceNumber": referenceNumber,
+                        "shopId": widget.shopId,
+                        "shopName": widget.shopName,
+                        "userId": user.uid,
+                        "userName": userName,
+                        "userPhone": userPhone,
+                        "notes": [
+                          if (widget.note?.isNotEmpty ?? false) widget.note,
+                          if ((_manualAddressData?["ملاحظات"]?.toString().isNotEmpty ?? false))
+                            _manualAddressData!["ملاحظات"]
+                        ].join(" — "),
+                        "items": items,
+                        "subtotal": subtotal,
+                        "serviceFee": serviceFee,
+                        "deliveryFee": deliveryFee,
+                        "total": grandTotal,
+                        "paymentMethod": "نقدًا عند الاستلام",
+                        "status": "pending",
+                        "timestamp": ServerValue.timestamp,
+                        "createdAtFormatted": formattedDate,
+                        "deliveryTime": widget.deliveryTime,
+                        "address": chosenAddress,
+                        "orderType": "طلب عبر التطبيق",
+                        "isPaid": false,
+                        "rejectionReason": "",
+                        "latitude": _selectedLocation?.latitude,
+                        "longitude": _selectedLocation?.longitude,
+                      };
+
+
+                      await orderRef.set(orderData);
+                      await db.ref("user_orders/${user.uid}/${orderRef.key}").set(orderData);
+
+                      await cartRef.remove();
+
+
+                      try {
+                        // 🟢 جلب اسم المستخدم الحقيقي من قاعدة بيانات otaibah_users
+                        String userName = "مستخدم";
+                        try {
+                          final userDataSnap = await db.ref("otaibah_users/${user.uid}").get();
+                          if (userDataSnap.exists) {
+                            final userData = Map<String, dynamic>.from(userDataSnap.value as Map);
+                            userName = userData["name"] ?? "مستخدم";
+                          }
+                        } catch (e) {
+                          print("⚠️ فشل جلب الاسم من otaibah_users: $e");
+                        }
+
+
+                        String? merchantToken;
+                        final singleRef = db.ref("merchants/${widget.shopId}/fcmToken");
+                        final singleSnap = await singleRef.get();
+                        if (singleSnap.exists) merchantToken = singleSnap.value.toString();
+
+                        if (merchantToken != null && merchantToken.isNotEmpty) {
+                          await NotificationSender.send(
+                            token: merchantToken,
+                            title: "طلب جديد من $userName",
+                            body: "طلب رقم $referenceNumber يحتوي ${items.length} صنفًا بانتظار المراجعة.",
+                            data: {"orderId": orderRef.key!, "click_action": "FLUTTER_NOTIFICATION_CLICK"},
+                          );
+
+                        }
+                      } catch (e) {
+                        print("❌ خطأ أثناء إرسال الإشعار: $e");
+                      }
+
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text("✅ تم إرسال الطلب بنجاح")),
+                      );
+
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => OrderTrackingPage(orderId: orderRef.key!)),
+                      );
+                    },
+
                   style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.black,
                       padding: const EdgeInsets.symmetric(vertical: 16)),
@@ -565,6 +848,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                       style: TextStyle(color: Colors.white, fontSize: 16)),
                 ),
               ),
+
             ],
           ),
         ),
@@ -598,6 +882,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
 class DashedDivider extends StatelessWidget {
   final double height;
   final Color color;
+
 
   const DashedDivider({this.height = 1, this.color = Colors.black26, super.key});
 

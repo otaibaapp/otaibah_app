@@ -102,33 +102,44 @@ class _CartPageState extends State<CartPage> {
             final double grandTotal =
                 totalWithDiscount + deliveryFee + serviceFee;
 
+            // ✅ تجهيز العناصر للإرسال إلى CheckoutPage
+            final List<Map<String, dynamic>> checkoutItems = items.map((item) {
+              final double price = double.tryParse(
+                  item['discountPrice']?.toString() ??
+                      item['price']?.toString() ??
+                      '0') ?? 0.0;
+              final int quantity = int.tryParse(item['quantity']?.toString() ?? '1') ?? 1;
+
+              return {
+                "name": item["name"] ?? "",
+                "qty": quantity,
+                "price": price,
+                "imageUrl": item["imageUrl"],
+              };
+            }).toList();
+
+
             return Column(
               children: [
+                // ✅ المنتجات فقط داخل التمرير
                 Expanded(
                   child: ListView(
                     children: [
-                      // ===== المنتجات =====
                       ...items.map((item) {
                         final itemRef = cartRef.child(item['key']);
-                        double price =
-                            double.tryParse(item['price'].toString()) ?? 0;
+                        double price = double.tryParse(item['price'].toString()) ?? 0;
                         double discountPrice =
-                            double.tryParse(item['discountPrice']?.toString() ??
-                                '') ??
-                                price;
-                        int quantity =
-                            int.tryParse(item['quantity'].toString()) ?? 0;
+                            double.tryParse(item['discountPrice']?.toString() ?? '') ?? price;
+                        int quantity = int.tryParse(item['quantity'].toString()) ?? 0;
 
                         return Column(
                           children: [
                             Padding(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 8),
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                               child: Row(
-                                textDirection: TextDirection.rtl, // 👈 مهم جداً
+                                textDirection: TextDirection.rtl,
                                 crossAxisAlignment: CrossAxisAlignment.center,
                                 children: [
-                                  // ✅ الصورة بأقصى اليمين
                                   ClipRRect(
                                     borderRadius: BorderRadius.circular(8),
                                     child: Image.network(
@@ -139,23 +150,19 @@ class _CartPageState extends State<CartPage> {
                                       errorBuilder: (_, __, ___) => const Icon(Icons.image, size: 50),
                                     ),
                                   ),
-
                                   const SizedBox(width: 12),
-
-                                  // ✅ النصوص بعد الصورة (يمين بالنسبة للـ RTL)
                                   Expanded(
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start, // في RTL = يمين
+                                      crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
-                                        Text(
-                                          item['name'] ?? "",
-                                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
+                                        Text(item['name'] ?? "",
+                                            style: const TextStyle(
+                                                fontSize: 16, fontWeight: FontWeight.bold),
+                                            overflow: TextOverflow.ellipsis),
                                         const SizedBox(height: 4),
                                         if (discountPrice < price)
                                           Row(
-                                            textDirection: TextDirection.rtl, // لنفس محاذاة الأسعار
+                                            textDirection: TextDirection.rtl,
                                             children: [
                                               Text(
                                                 "${price.toStringAsFixed(0)} ل.س",
@@ -177,17 +184,13 @@ class _CartPageState extends State<CartPage> {
                                             ],
                                           )
                                         else
-                                          Text(
-                                            "${price.toStringAsFixed(0)} ل.س",
-                                            style: const TextStyle(fontSize: 14, color: Colors.black87),
-                                          ),
+                                          Text("${price.toStringAsFixed(0)} ل.س",
+                                              style: const TextStyle(
+                                                  fontSize: 14, color: Colors.black87)),
                                       ],
                                     ),
                                   ),
-
                                   const SizedBox(width: 12),
-
-                                  // ✅ أزرار الكمية بأقصى اليسار
                                   Row(
                                     children: [
                                       GestureDetector(
@@ -195,10 +198,9 @@ class _CartPageState extends State<CartPage> {
                                         child: Image.asset("assets/images/plus.png", width: 23, height: 23),
                                       ),
                                       const SizedBox(width: 12),
-                                      Text(
-                                        "$quantity",
-                                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-                                      ),
+                                      Text("$quantity",
+                                          style: const TextStyle(
+                                              fontSize: 14, fontWeight: FontWeight.bold)),
                                       const SizedBox(width: 12),
                                       if (quantity > 1)
                                         GestureDetector(
@@ -211,11 +213,12 @@ class _CartPageState extends State<CartPage> {
                                             final confirm = await showDialog<bool>(
                                               context: context,
                                               builder: (ctx) => AlertDialog(
-                                                title: const Text("تأكيد الحذف", textAlign: TextAlign.right), // 👈 حتى العنوان يمين
-                                                content: const Text(
-                                                  "هل تريد حذف هذا المنتج من السلة؟",
-                                                  textAlign: TextAlign.right, // 👈 النص يمين
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius: BorderRadius.circular(25),
                                                 ),
+                                                title: const Text("تأكيد الحذف", textAlign: TextAlign.right),
+                                                content: const Text("هل ترغب حقاً في حذف هذا المنتج من السلة؟",
+                                                    textAlign: TextAlign.right),
                                                 actions: [
                                                   TextButton(
                                                     onPressed: () => Navigator.of(ctx).pop(false),
@@ -234,16 +237,36 @@ class _CartPageState extends State<CartPage> {
                                         ),
                                     ],
                                   )
-
                                 ],
                               ),
-
                             ),
                             const Divider(color: Colors.black12, thickness: 1),
                           ],
                         );
-                      }),
+                      }).toList(),
+                    ],
+                  ),
+                ),
 
+                // ✅ قسم الملاحظة + الملخص + الأزرار معًا داخل بطاقة واحدة جميلة
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.08),
+                        offset: const Offset(0, -3),
+                        blurRadius: 10,
+                        spreadRadius: 1,
+                      ),
+                    ],
+                  ),
+                  clipBehavior: Clip.hardEdge, // ✅ يمنع أي طبقة تغطي الأزرار
+                  padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
                       // ===== الملاحظة =====
                       ListTile(
                         onTap: () => _openNoteSheet(context),
@@ -253,113 +276,112 @@ class _CartPageState extends State<CartPage> {
                           height: 22,
                           color: Colors.black,
                         ),
-                        title: Align(
+                        title: const Align(
                           alignment: Alignment.centerRight,
-                          child: const Text(
-                            "دوّن ملاحظة",
-                            style: TextStyle(fontSize: 15),
-                          ),
+                          child: Text("دوّن ملاحظة", style: TextStyle(fontSize: 15)),
                         ),
                         subtitle: Align(
                           alignment: Alignment.centerRight,
                           child: Text(
-                            note.isEmpty
-                                ? "هل تود أن تخبر المتجر بشيء ما؟"
-                                : note,
-                            style: const TextStyle(
-                              fontSize: 13,
-                              color: Colors.black54,
-                            ),
+                            note.isEmpty ? "هل تود أن تخبر المتجر بشيء ما؟" : note,
+                            style: const TextStyle(fontSize: 13, color: Colors.black54),
                           ),
                         ),
                       ),
+
                       const Divider(color: Colors.black12, thickness: 1),
 
                       // ===== ملخص الدفع =====
                       Padding(
-                        padding: const EdgeInsets.all(12),
+                        padding: const EdgeInsets.all(8),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const Text("ملخّص الدفع",
-                                style: TextStyle(
-                                    fontSize: 16, fontWeight: FontWeight.bold)),
+                                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                             const SizedBox(height: 10),
-                            _buildSummaryRow(
-                                "السعر قبل الخصم", totalWithoutDiscount),
+                            _buildSummaryRow("السعر قبل الخصم", totalWithoutDiscount),
                             _buildSummaryRow("المجموع الفرعي", totalWithDiscount),
-                            _buildSummaryRow("التوفير", -saving,
-                                valueColor: Colors.green),
-                            _buildSummaryRow("رسوم الخدمة", serviceFee,
-                                hasInfo: true),
+                            _buildSummaryRow("التوفير", -saving, valueColor: Colors.green),
+                            _buildSummaryRow("رسوم الخدمة", serviceFee, hasInfo: true),
                             _buildSummaryRow("رسوم التوصيل", deliveryFee, hasInfo: true, isDelivery: true),
                             const Padding(
-                              padding: EdgeInsets.symmetric(vertical: 12), // 👈 8 بكسل فوق وتحت
+                              padding: EdgeInsets.symmetric(vertical: 12),
                               child: DashedDivider(color: Colors.black26),
                             ),
-                            _buildSummaryRow("الإجمالي", grandTotal,
-                                isTotal: true),
+                            _buildSummaryRow("الإجمالي", grandTotal, isTotal: true),
                           ],
                         ),
                       ),
+
+                      const SizedBox(height: 8),
+
+                      // ===== الأزرار =====
+                      Row(
+                        children: [
+                          Expanded(
+                            child: ElevatedButton(
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => CheckoutPage(
+                                      shopId: widget.shopId,
+                                      shopName: widget.shopName,
+                                      deliveryTime: 15,
+                                      total: grandTotal,
+                                      cartItems: checkoutItems,
+                                      note: note,
+                                    ),
+                                  ),
+                                );
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: primaryColor,
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(7),
+                                ),
+                              ),
+                              child: const Text(
+                                "متابعة الدفع",
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFFfffcee),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: () => Navigator.pop(context),
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(7),
+                                ),
+                              ),
+                              child: const Text(
+                                "متابعة التسوّق",
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF988561),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 10),
                     ],
                   ),
                 ),
 
-                // ===== الأزرار =====
-                Container(
-                  color: Colors.white,
-                  padding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => CheckoutPage(
-                                  shopId: widget.shopId,
-                                  shopName: widget.shopName,
-                                  deliveryTime: 30, // أو خذها من بيانات المتجر widget.shopData['deliveryTime']
-                                  total: grandTotal,
-                                ),
-                              ),
-                            );
-                          },
-
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: primaryColor,
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(7)),
-                          ),
-                          child: const Text("متابعة الدفع",
-                              style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFfffcee))),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: () {
-                            Navigator.pop(context); // متابعة التسوق
-                          },
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(7)),
-                          ),
-                          child: const Text("متابعة التسوّق",
-                               style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF988561))),
-
-                        ),
-                      ),
-                    ],
-                  ),
-                )
               ],
             );
+
           },
         ),
       ),
