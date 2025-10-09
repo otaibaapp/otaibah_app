@@ -1,17 +1,19 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:otaibah_app/pages/education.dart';
 import 'package:otaibah_app/pages/open_souq.dart';
 import 'package:otaibah_app/pages/services.dart';
+import 'package:otaibah_app/pages/setting.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../loading_dialog.dart';
 import '../main.dart';
 import 'Shopping.dart';
 import 'announcements.dart';
-import 'donations.dart';
 import 'announcements_favorites_page.dart'; // ✅ مفضلة الإعلانات
+import 'donations.dart';
 import 'favorites_page.dart'; // ✅ مفضلة السوق المفتوح
 
 class Dashboard extends StatefulWidget {
@@ -27,6 +29,8 @@ class _DashboardState extends State<Dashboard>
     with SingleTickerProviderStateMixin {
   TabController? controller;
   late int indexSelected;
+  String userProfileImage = '';
+  String shownName = '';
 
   static const String _favSvgPath = 'assets/svg/favorite_outline.svg';
 
@@ -46,6 +50,15 @@ class _DashboardState extends State<Dashboard>
     });
   }
 
+  Future<void> getUserInfo() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      shownName = prefs.getString('name').toString();
+      userProfileImage = prefs.getString('profileImgUrl')!.toString();
+      //userProfileImage = FirebaseAuth.instance.currentUser!.photoURL!;
+    });
+  }
+
   @override
   void initState() {
     super.initState();
@@ -55,22 +68,28 @@ class _DashboardState extends State<Dashboard>
       vsync: this,
       initialIndex: indexSelected,
     );
+    getUserInfo();
   }
 
-  Future<void> saveLoginStatus(bool isLoggedIn) async {
+  Future<void> saveLoginStatus(
+    bool isLoggedIn,
+    String shownName,
+    String userProfileImage,
+  ) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('isEmailVerified', isLoggedIn);
+    prefs.setString('name', shownName);
+    prefs.setString('profileImgUrl', userProfileImage);
   }
 
   void logOut() {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (BuildContext context) =>
-          LoadingDialog(msg: 'جار تسجيل الخروج'),
+      builder: (BuildContext context) => LoadingDialog(msg: 'جار تسجيل الخروج'),
     );
     FirebaseAuth.instance.signOut();
-    saveLoginStatus(false);
+    saveLoginStatus(false, '', '');
     Future.delayed(Duration.zero);
     Navigator.of(context, rootNavigator: true).pop();
     Navigator.push(context, MaterialPageRoute(builder: (c) => const MyApp()));
@@ -90,9 +109,7 @@ class _DashboardState extends State<Dashboard>
           elevation: 0,
           backgroundColor: Colors.transparent,
           flexibleSpace: Container(
-            decoration: const BoxDecoration(
-              color: Color(0xFFf6f6f6),
-            ),
+            decoration: const BoxDecoration(color: Color(0xFFf6f6f6)),
           ),
           title: Directionality(
             textDirection: TextDirection.rtl,
@@ -100,27 +117,43 @@ class _DashboardState extends State<Dashboard>
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 // ▸ يمين: صورة البروفايل + الترحيب
-                Row(
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(17),
-                      child: Image.network(
-                        "https://l.top4top.io/p_3556413iu1.png",
-                        width: 45,
-                        height: 45,
-                        fit: BoxFit.cover,
+                GestureDetector(
+                  onTap: () {
+                    if (!context.mounted) return;
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (c) => Setting()),
+                    );
+                  },
+                  child: Row(
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(17),
+                        child: (userProfileImage.isNotEmpty)
+                            ? CachedNetworkImage(
+                                width: 45,
+                                height: 45,
+                                fit: BoxFit.cover,
+                                imageUrl: userProfileImage,
+                              )
+                            : SvgPicture.asset(
+                                'assets/svg/name_icon.svg',
+                                width: 45,
+                                height: 45,
+                              ),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    const Text(
-                      "مرحبا بك أحمد...!",
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        overflow: TextOverflow.ellipsis,
+
+                      const SizedBox(width: 8),
+                      Text(
+                        '$shownNameمرحبا بك: ',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
 
                 // ▸ يسار: زر المفضلات (يختلف حسب التبويب الحالي)
@@ -132,7 +165,8 @@ class _DashboardState extends State<Dashboard>
                         onPressed: () {
                           Navigator.of(context).push(
                             MaterialPageRoute(
-                              builder: (_) => const AnnouncementsFavoritesPage(),
+                              builder: (_) =>
+                                  const AnnouncementsFavoritesPage(),
                             ),
                           );
                         },

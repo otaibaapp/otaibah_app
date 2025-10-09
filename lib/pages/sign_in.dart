@@ -1,10 +1,10 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:otaibah_app/pages/dashboard.dart';
 import 'package:otaibah_app/pages/sign_up.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
 import '../loading_dialog.dart';
 import '../main.dart';
 
@@ -17,14 +17,24 @@ class SignIn extends StatefulWidget {
 
 class _SignInState extends State<SignIn> {
   bool obscurePassword = true;
-  Future<void> saveLoginStatus(bool isLoggedIn) async {
+  Future<void> saveLoginStatus(
+    bool isLoggedIn,
+    String name,
+    String profileImgUrl,
+  ) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('isEmailVerified', isLoggedIn);
+    await prefs.setString('name', name);
+    await prefs.setString('profileImgUrl', profileImgUrl);
   }
 
   void displaySnackBar(String msg, Color color) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(msg, textAlign: TextAlign.center), backgroundColor: color));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg, textAlign: TextAlign.center),
+        backgroundColor: color,
+      ),
+    );
   }
 
   void signIn(String email, String password) async {
@@ -32,37 +42,50 @@ class _SignInState extends State<SignIn> {
       showDialog(
         context: context,
         barrierDismissible: false,
-        builder: (BuildContext context) => LoadingDialog(msg: 'جار تسجيل الدخول'),
+        builder: (BuildContext context) =>
+            LoadingDialog(msg: 'جار تسجيل الدخول'),
       );
       await FirebaseAuth.instance
           .signInWithEmailAndPassword(
-        email: email.trim(),
-        password: password.trim(),
-      )
+            email: email.trim(),
+            password: password.trim(),
+          )
           .then((onValue) {
-        if (onValue.user!.emailVerified) {
-          saveLoginStatus(true);
-          Future.delayed(Duration.zero);
-          Navigator.of(context, rootNavigator: true).pop();
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (c) => const Dashboard()),
-          );
-        }
-      }).catchError((onError) {
-        String errorMessage = onError.toString();
-        if (errorMessage.contains('user-not-found')) {
-          errorMessage = 'الايميل غير مسجل من قبل!';
-        } else if (errorMessage.contains('wrong-password') ||
-            errorMessage.contains('incorrect')) {
-          errorMessage = 'تحقق من الايميل او كلمة المرور!';
-        } else if (errorMessage.contains('badly forma')) {
-          errorMessage = 'تحقق من صيغة الايميل!';
-        }
-        Future.delayed(Duration.zero);
-        Navigator.of(context, rootNavigator: true).pop();
-        displaySnackBar(errorMessage, Colors.red);
-      });
+            if (onValue.user!.emailVerified) {
+              saveLoginStatus(
+                true,
+                onValue.user!.displayName!,
+                onValue.user!.photoURL!,
+              );
+              Future.delayed(Duration.zero);
+              Navigator.of(context, rootNavigator: true).pop();
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (c) => const Dashboard()),
+              );
+            } else {
+              Future.delayed(Duration.zero);
+              Navigator.of(context, rootNavigator: true).pop();
+              displaySnackBar(
+                'رجاء قم بتأكيد الايميل قبل بتسجيل الدخول!',
+                Colors.blueGrey,
+              );
+            }
+          })
+          .catchError((onError) {
+            String errorMessage = onError.toString();
+            if (errorMessage.contains('user-not-found')) {
+              errorMessage = 'الايميل غير مسجل من قبل!';
+            } else if (errorMessage.contains('wrong-password') ||
+                errorMessage.contains('incorrect')) {
+              errorMessage = 'تحقق من الايميل او كلمة المرور!';
+            } else if (errorMessage.contains('badly forma')) {
+              errorMessage = 'تحقق من صيغة الايميل!';
+            }
+            Future.delayed(Duration.zero);
+            Navigator.of(context, rootNavigator: true).pop();
+            displaySnackBar(errorMessage, Colors.red);
+          });
     } on FirebaseAuthException {
       // تجاهل الأخطاء الصامتة
     }
@@ -105,7 +128,10 @@ class _SignInState extends State<SignIn> {
 
             SafeArea(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 32,
+                ),
                 child: Directionality(
                   textDirection: TextDirection.rtl,
                   child: Column(
@@ -114,7 +140,11 @@ class _SignInState extends State<SignIn> {
                       const SizedBox(height: 20),
 
                       // الشعار
-                      SvgPicture.asset('assets/svg/app_logo.svg', height: 40, width: 40),
+                      SvgPicture.asset(
+                        'assets/svg/app_logo.svg',
+                        height: 40,
+                        width: 40,
+                      ),
                       const SizedBox(height: 8),
                       const Text(
                         'تطبيق بلدة العتيبة',
@@ -123,7 +153,10 @@ class _SignInState extends State<SignIn> {
                       const SizedBox(height: 12),
                       const Text(
                         'صفحة تسجيل الدخول',
-                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       const SizedBox(height: 24),
 
@@ -140,18 +173,27 @@ class _SignInState extends State<SignIn> {
                               'assets/svg/email_icon.svg',
                               width: 13,
                               height: 13,
-                              colorFilter: const ColorFilter.mode(Colors.black, BlendMode.srcIn),
+                              colorFilter: const ColorFilter.mode(
+                                Colors.black,
+                                BlendMode.srcIn,
+                              ),
                             ),
                           ),
                           filled: true,
                           fillColor: Colors.transparent,
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(color: Colors.black26, width: 1.2),
+                            borderSide: const BorderSide(
+                              color: Colors.black26,
+                              width: 1.2,
+                            ),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(color: Color(0xFF988561), width: 1.5),
+                            borderSide: const BorderSide(
+                              color: Color(0xFF988561),
+                              width: 1.5,
+                            ),
                           ),
                         ),
                       ),
@@ -171,12 +213,17 @@ class _SignInState extends State<SignIn> {
                               'assets/svg/password_icon.svg',
                               width: 13,
                               height: 13,
-                              colorFilter: const ColorFilter.mode(Colors.black, BlendMode.srcIn),
+                              colorFilter: const ColorFilter.mode(
+                                Colors.black,
+                                BlendMode.srcIn,
+                              ),
                             ),
                           ),
                           suffixIcon: InkWell(
                             onTap: () {
-                              setState(() => obscurePassword = !obscurePassword);
+                              setState(
+                                () => obscurePassword = !obscurePassword,
+                              );
                             },
                             child: Padding(
                               padding: const EdgeInsets.all(14.0),
@@ -186,7 +233,10 @@ class _SignInState extends State<SignIn> {
                                     : 'assets/svg/eye_open.svg',
                                 width: 13,
                                 height: 13,
-                                colorFilter: const ColorFilter.mode(Colors.black, BlendMode.srcIn),
+                                colorFilter: const ColorFilter.mode(
+                                  Colors.black,
+                                  BlendMode.srcIn,
+                                ),
                               ),
                             ),
                           ),
@@ -194,11 +244,17 @@ class _SignInState extends State<SignIn> {
                           fillColor: Colors.transparent,
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(color: Colors.black26, width: 1.2),
+                            borderSide: const BorderSide(
+                              color: Colors.black26,
+                              width: 1.2,
+                            ),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(color: Color(0xFF988561), width: 1.5),
+                            borderSide: const BorderSide(
+                              color: Color(0xFF988561),
+                              width: 1.5,
+                            ),
                           ),
                         ),
                       ),
@@ -213,7 +269,9 @@ class _SignInState extends State<SignIn> {
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.black,
                             foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(7)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(7),
+                            ),
                           ),
                           onPressed: () {
                             checkValidation(
@@ -221,17 +279,26 @@ class _SignInState extends State<SignIn> {
                               passwordController.text.trim(),
                             );
                           },
-                          child: const Text('تسجيل الدخول', style: TextStyle(fontSize: 15)),
+                          child: const Text(
+                            'تسجيل الدخول',
+                            style: TextStyle(fontSize: 15),
+                          ),
                         ),
                       ),
                       const SizedBox(height: 24),
 
-                      const Text('ليس لديك حساب بعد؟', style: TextStyle(color: Colors.black87)),
+                      const Text(
+                        'ليس لديك حساب بعد؟',
+                        style: TextStyle(color: Colors.black87),
+                      ),
                       const SizedBox(height: 8),
 
                       // زر إنشاء الحساب
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 0),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 40,
+                          vertical: 0,
+                        ),
                         decoration: BoxDecoration(
                           color: const Color(0xFF988561),
                           borderRadius: BorderRadius.circular(8),
@@ -246,12 +313,14 @@ class _SignInState extends State<SignIn> {
                           },
                           child: const Text(
                             'إنشاء حساب جديد',
-                            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
                       ),
                       const SizedBox(height: 24),
-
                     ],
                   ),
                 ),

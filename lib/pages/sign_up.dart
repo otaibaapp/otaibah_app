@@ -1,17 +1,15 @@
 import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_storage/firebase_storage.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:image_cropper/image_cropper.dart';
-import 'package:otaibah_app/loading_dialog.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:otaibah_app/main.dart';
 import 'package:otaibah_app/pages/sign_in.dart';
 
@@ -29,7 +27,8 @@ class _SignUpState extends State<SignUp> {
 
   final TextEditingController passwordController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
-  final TextEditingController confirmPasswordController = TextEditingController();
+  final TextEditingController confirmPasswordController =
+      TextEditingController();
   final TextEditingController nameController = TextEditingController();
 
   final _auth = FirebaseAuth.instance;
@@ -42,7 +41,10 @@ class _SignUpState extends State<SignUp> {
 
   void displaySnackBar(String msg, Color color) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(msg, textAlign: TextAlign.center), backgroundColor: color),
+      SnackBar(
+        content: Text(msg, textAlign: TextAlign.center),
+        backgroundColor: color,
+      ),
     );
   }
 
@@ -65,10 +67,7 @@ class _SignUpState extends State<SignUp> {
             hideBottomControls: false, // ✅ ضروري لتظهر أدوات القص فعلياً
             showCropGrid: true,
           ),
-          IOSUiSettings(
-            title: 'قصّ الصورة',
-            aspectRatioLockEnabled: true,
-          ),
+          IOSUiSettings(title: 'قصّ الصورة', aspectRatioLockEnabled: true),
         ],
       );
 
@@ -85,15 +84,13 @@ class _SignUpState extends State<SignUp> {
     }
   }
 
-
-// 🔄 ضغط الصورة بأفضل توازن بين الحجم والجودة (متوافق مع كل المنصات)
+  // 🔄 ضغط الصورة بأفضل توازن بين الحجم والجودة (متوافق مع كل المنصات)
   Future<Uint8List?> _compressPicked() async {
     final file = _croppedImage ?? _pickedImage;
     if (file == null) return null;
 
     try {
       Uint8List bytes;
-
       if (file is XFile) {
         bytes = await file.readAsBytes();
       } else if (file is CroppedFile) {
@@ -152,7 +149,11 @@ class _SignUpState extends State<SignUp> {
   }
 
   void checkFieldsValidation(
-      String email, String password, String confirmPassword, String fullName) {
+    String email,
+    String password,
+    String confirmPassword,
+    String fullName,
+  ) {
     if (email.length < 5 ||
         password.length < 5 ||
         confirmPassword.length < 5 ||
@@ -174,7 +175,11 @@ class _SignUpState extends State<SignUp> {
   }
 
   Future<void> registerNewUser(
-      String email, String password, String confirmPassword, String fullName) async {
+    String email,
+    String password,
+    String confirmPassword,
+    String fullName,
+  ) async {
     setState(() => isLoading = true);
 
     try {
@@ -190,10 +195,11 @@ class _SignUpState extends State<SignUp> {
         }
       }
 
-      final userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
-        email: emailController.text.trim(),
-        password: passwordController.text.trim(),
-      );
+      final userCredential = await FirebaseAuth.instance
+          .createUserWithEmailAndPassword(
+            email: emailController.text.trim(),
+            password: passwordController.text.trim(),
+          );
 
       final uid = userCredential.user!.uid;
 
@@ -211,14 +217,17 @@ class _SignUpState extends State<SignUp> {
         'name': fullName,
         'email': email,
         'photoUrl': finalUrl ?? '',
-        'createdAt': ServerValue.timestamp,
+        'createdAt': DateTime.now().toLocal().toString(),
       });
 
       await _deleteTempIfAny();
 
       try {
         await userCredential.user?.sendEmailVerification();
-        displaySnackBar('✅ تم إرسال رسالة تأكيد إلى بريدك الإلكتروني. يرجى تأكيد الحساب قبل تسجيل الدخول.', Colors.green);
+        displaySnackBar(
+          '✅ تم إرسال رسالة تأكيد إلى بريدك الإلكتروني. يرجى تأكيد الحساب قبل تسجيل الدخول.',
+          Colors.green,
+        );
       } on FirebaseAuthException catch (e) {
         displaySnackBar(e.code, Colors.red);
       }
@@ -273,20 +282,34 @@ class _SignUpState extends State<SignUp> {
             Image.asset('assets/images/background.png', fit: BoxFit.cover),
             SafeArea(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 32,
+                ),
                 child: Directionality(
                   textDirection: TextDirection.rtl,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       const SizedBox(height: 20),
-                      SvgPicture.asset('assets/svg/app_logo.svg', height: 40, width: 40),
+                      SvgPicture.asset(
+                        'assets/svg/app_logo.svg',
+                        height: 40,
+                        width: 40,
+                      ),
                       const SizedBox(height: 8),
-                      const Text('تطبيق بلدة العتيبة',
-                          style: TextStyle(fontSize: 16, color: Colors.black54)),
+                      const Text(
+                        'تطبيق بلدة العتيبة',
+                        style: TextStyle(fontSize: 16, color: Colors.black54),
+                      ),
                       const SizedBox(height: 12),
-                      const Text('صفحة التسجيل',
-                          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                      const Text(
+                        'صفحة التسجيل',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                       const SizedBox(height: 20),
 
                       // صورة الحساب
@@ -300,18 +323,18 @@ class _SignUpState extends State<SignUp> {
                           children: [
                             _pickedImage != null
                                 ? ClipOval(
-                              child: Image.file(
-                                File(_pickedImage!.path),
-                                width: 95,
-                                height: 95,
-                                fit: BoxFit.cover,
-                              ),
-                            )
+                                    child: Image.file(
+                                      File(_pickedImage!.path),
+                                      width: 95,
+                                      height: 95,
+                                      fit: BoxFit.cover,
+                                    ),
+                                  )
                                 : SvgPicture.asset(
-                              'assets/svg/add_photo.svg', // 👈 غيّر هذا حسب اسم أيقونتك
-                              width: 100,
-                              height: 100,
-                            ),
+                                    'assets/svg/add_photo.svg', // 👈 غيّر هذا حسب اسم أيقونتك
+                                    width: 100,
+                                    height: 100,
+                                  ),
                             const SizedBox(height: 10),
                             const Text(
                               'أضف صورتك',
@@ -324,8 +347,6 @@ class _SignUpState extends State<SignUp> {
                           ],
                         ),
                       ),
-
-
 
                       const SizedBox(height: 24),
 
@@ -341,8 +362,10 @@ class _SignUpState extends State<SignUp> {
                               'assets/svg/name_icon.svg',
                               width: 12,
                               height: 12,
-                              colorFilter:
-                              const ColorFilter.mode(Colors.black, BlendMode.srcIn),
+                              colorFilter: const ColorFilter.mode(
+                                Colors.black,
+                                BlendMode.srcIn,
+                              ),
                             ),
                           ),
                           filled: true,
@@ -367,8 +390,10 @@ class _SignUpState extends State<SignUp> {
                               'assets/svg/email_icon.svg',
                               width: 13,
                               height: 13,
-                              colorFilter:
-                              const ColorFilter.mode(Colors.black, BlendMode.srcIn),
+                              colorFilter: const ColorFilter.mode(
+                                Colors.black,
+                                BlendMode.srcIn,
+                              ),
                             ),
                           ),
                           filled: true,
@@ -394,12 +419,16 @@ class _SignUpState extends State<SignUp> {
                               'assets/svg/password_icon.svg',
                               width: 22,
                               height: 22,
-                              colorFilter:
-                              const ColorFilter.mode(Colors.black, BlendMode.srcIn),
+                              colorFilter: const ColorFilter.mode(
+                                Colors.black,
+                                BlendMode.srcIn,
+                              ),
                             ),
                           ),
                           suffixIcon: InkWell(
-                            onTap: () => setState(() => obscurePassword = !obscurePassword),
+                            onTap: () => setState(
+                              () => obscurePassword = !obscurePassword,
+                            ),
                             child: Padding(
                               padding: const EdgeInsets.all(14.0),
                               child: SvgPicture.asset(
@@ -409,7 +438,9 @@ class _SignUpState extends State<SignUp> {
                                 width: 13,
                                 height: 13,
                                 colorFilter: const ColorFilter.mode(
-                                    Color(0xFF000000), BlendMode.srcIn),
+                                  Color(0xFF000000),
+                                  BlendMode.srcIn,
+                                ),
                               ),
                             ),
                           ),
@@ -436,12 +467,16 @@ class _SignUpState extends State<SignUp> {
                               'assets/svg/password_icon.svg',
                               width: 13,
                               height: 13,
-                              colorFilter:
-                              const ColorFilter.mode(Colors.black, BlendMode.srcIn),
+                              colorFilter: const ColorFilter.mode(
+                                Colors.black,
+                                BlendMode.srcIn,
+                              ),
                             ),
                           ),
                           suffixIcon: InkWell(
-                            onTap: () => setState(() => obscureConfirm = !obscureConfirm),
+                            onTap: () => setState(
+                              () => obscureConfirm = !obscureConfirm,
+                            ),
                             child: Padding(
                               padding: const EdgeInsets.all(14.0),
                               child: SvgPicture.asset(
@@ -451,7 +486,9 @@ class _SignUpState extends State<SignUp> {
                                 width: 13,
                                 height: 13,
                                 colorFilter: const ColorFilter.mode(
-                                    Color(0xFF000000), BlendMode.srcIn),
+                                  Color(0xFF000000),
+                                  BlendMode.srcIn,
+                                ),
                               ),
                             ),
                           ),
@@ -474,33 +511,38 @@ class _SignUpState extends State<SignUp> {
                             backgroundColor: Colors.black,
                             foregroundColor: Colors.white,
                             shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(7)),
+                              borderRadius: BorderRadius.circular(7),
+                            ),
                           ),
                           onPressed: isLoading ? () {} : signUp,
                           child: isLoading
                               ? const SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2.5,
-                            ),
-                          )
+                                  width: 24,
+                                  height: 24,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2.5,
+                                  ),
+                                )
                               : const Text(
-                            'فتح حساب جديد',
-                            style: TextStyle(fontSize: 15),
-                          ),
+                                  'فتح حساب جديد',
+                                  style: TextStyle(fontSize: 15),
+                                ),
                         ),
                       ),
 
                       const SizedBox(height: 24),
-                      const Text('هل لديك حساب بالفعل؟',
-                          style: TextStyle(color: Colors.black87)),
+                      const Text(
+                        'هل لديك حساب بالفعل؟',
+                        style: TextStyle(color: Colors.black87),
+                      ),
                       const SizedBox(height: 6),
 
                       Container(
-                        padding:
-                        const EdgeInsets.symmetric(horizontal: 60, vertical: 0),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 60,
+                          vertical: 0,
+                        ),
                         decoration: BoxDecoration(
                           color: const Color(0xFF988561),
                           borderRadius: BorderRadius.circular(8),
@@ -515,7 +557,9 @@ class _SignUpState extends State<SignUp> {
                           child: const Text(
                             'أنقُر لتسجيل الدخول',
                             style: TextStyle(
-                                color: Colors.white, fontWeight: FontWeight.bold),
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
                       ),
