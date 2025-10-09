@@ -10,6 +10,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
+import 'package:image_cropper/image_cropper.dart';
 import 'package:otaibah_app/loading_dialog.dart';
 import 'package:otaibah_app/main.dart';
 import 'package:otaibah_app/pages/sign_in.dart';
@@ -36,6 +37,7 @@ class _SignUpState extends State<SignUp> {
   final _picker = ImagePicker();
 
   XFile? _pickedImage;
+  CroppedFile? _croppedImage;
   String? _tempUploadedPath;
 
   void displaySnackBar(String msg, Color color) {
@@ -45,35 +47,72 @@ class _SignUpState extends State<SignUp> {
   }
 
   Future<void> _pickImage() async {
-    final x = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
-    if (x != null) setState(() => _pickedImage = x);
+    final picked = await _picker.pickImage(source: ImageSource.gallery);
+    if (picked == null) return;
+
+    try {
+      final cropped = await ImageCropper().cropImage(
+        sourcePath: picked.path,
+        aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1),
+        uiSettings: [
+          AndroidUiSettings(
+            toolbarTitle: 'قصّ الصورة',
+            toolbarColor: Colors.black,
+            toolbarWidgetColor: Colors.white,
+            activeControlsWidgetColor: const Color(0xFF988561),
+            initAspectRatio: CropAspectRatioPreset.square,
+            lockAspectRatio: true,
+            hideBottomControls: false, // ✅ ضروري لتظهر أدوات القص فعلياً
+            showCropGrid: true,
+          ),
+          IOSUiSettings(
+            title: 'قصّ الصورة',
+            aspectRatioLockEnabled: true,
+          ),
+        ],
+      );
+
+      if (cropped != null) {
+        setState(() {
+          _croppedImage = cropped;
+          _pickedImage = XFile(cropped.path);
+        });
+      } else {
+        displaySnackBar('تم إلغاء القصّ', Colors.grey);
+      }
+    } catch (e) {
+      displaySnackBar('فشل فتح أداة القصّ: $e', Colors.red);
+    }
   }
 
+
+// 🔄 ضغط الصورة بأفضل توازن بين الحجم والجودة (متوافق مع كل المنصات)
   Future<Uint8List?> _compressPicked() async {
-    if (_pickedImage == null) return null;
+    final file = _croppedImage ?? _pickedImage;
+    if (file == null) return null;
+
     try {
-      if (kIsWeb) {
-        final bytes = await _pickedImage!.readAsBytes();
-        final out = await FlutterImageCompress.compressWithList(
-          bytes,
-          quality: 60,
-          minWidth: 400,
-          minHeight: 400,
-          format: CompressFormat.jpeg,
-        );
-        return Uint8List.fromList(out);
+      Uint8List bytes;
+
+      if (file is XFile) {
+        bytes = await file.readAsBytes();
+      } else if (file is CroppedFile) {
+        bytes = await File(file.path).readAsBytes();
       } else {
-        final out = await FlutterImageCompress.compressWithFile(
-          _pickedImage!.path,
-          quality: 60,
-          minWidth: 400,
-          minHeight: 400,
-          format: CompressFormat.jpeg,
-        );
-        if (out == null) return null;
-        return Uint8List.fromList(out);
+        return null;
       }
-    } catch (_) {
+
+      final out = await FlutterImageCompress.compressWithList(
+        bytes,
+        quality: 50,
+        minWidth: 500,
+        minHeight: 500,
+        format: CompressFormat.jpeg,
+      );
+
+      return Uint8List.fromList(out);
+    } catch (e) {
+      displaySnackBar("فشل ضغط الصورة: $e", Colors.red);
       return null;
     }
   }
@@ -117,20 +156,17 @@ class _SignUpState extends State<SignUp> {
     if (email.length < 5 ||
         password.length < 5 ||
         confirmPassword.length < 5 ||
-        fullName.length < 5) {
-      displaySnackBar('AppLocalizations.of(context)!.check_fields', Colors.red);
+        fullName.length < 3) {
+      displaySnackBar('الرجاء تعبئة جميع الحقول بشكل صحيح', Colors.red);
       return;
     } else if (!email.contains("@")) {
-      displaySnackBar('AppLocalizations.of(context)!.check_email', Colors.red);
+      displaySnackBar('الرجاء إدخال بريد إلكتروني صحيح', Colors.red);
       return;
     } else if (password.length < 6) {
-      displaySnackBar('AppLocalizations.of(context)!.check_password', Colors.red);
+      displaySnackBar('كلمة المرور يجب أن تكون 6 أحرف على الأقل', Colors.red);
       return;
     } else if (password.compareTo(confirmPassword) != 0) {
-      displaySnackBar('AppLocalizations.of(context)!.password_not_match', Colors.red);
-      return;
-    } else if (_pickedImage == null) {
-      displaySnackBar('الرجاء اختيار صورة الحساب أولاً', Colors.red);
+      displaySnackBar('كلمتا المرور غير متطابقتين', Colors.red);
       return;
     } else {
       registerNewUser(email, password, confirmPassword, fullName);
@@ -142,17 +178,16 @@ class _SignUpState extends State<SignUp> {
     setState(() => isLoading = true);
 
     try {
-      final compressed = await _compressPicked();
-      if (compressed == null) {
-        displaySnackBar('تعذّر ضغط الصورة. حاول صورة أخرى.', Colors.red);
-        setState(() => isLoading = false);
-        return;
-      }
+      Uint8List? compressed;
+      String? tempUrl;
+      String? finalUrl;
 
-      final tempUrl = await _uploadTempBeforeRegister(compressed);
-      if (tempUrl == null) {
-        setState(() => isLoading = false);
-        return;
+      // إذا المستخدم اختار صورة
+      if (_pickedImage != null || _croppedImage != null) {
+        compressed = await _compressPicked();
+        if (compressed != null) {
+          tempUrl = await _uploadTempBeforeRegister(compressed);
+        }
       }
 
       final userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
@@ -161,37 +196,46 @@ class _SignUpState extends State<SignUp> {
       );
 
       final uid = userCredential.user!.uid;
-      final finalUrl = await _uploadFinalAfterRegister(uid, compressed);
+
+      // رفع الصورة النهائية فقط لو فيه صورة
+      if (compressed != null) {
+        finalUrl = await _uploadFinalAfterRegister(uid, compressed);
+      }
 
       await userCredential.user!.updateDisplayName(fullName);
-      await userCredential.user!.updatePhotoURL(finalUrl ?? tempUrl);
+      if (finalUrl != null) {
+        await userCredential.user!.updatePhotoURL(finalUrl);
+      }
 
       await _db.child('otaibah_users/$uid').set({
         'name': fullName,
         'email': email,
-        'photoUrl': finalUrl ?? tempUrl,
+        'photoUrl': finalUrl ?? '',
         'createdAt': ServerValue.timestamp,
       });
 
       await _deleteTempIfAny();
 
-      displaySnackBar('تم إنشاء الحساب بنجاح', Colors.green);
       try {
         await userCredential.user?.sendEmailVerification();
-        displaySnackBar('تم إرسال رابط التأكيد إلى بريدك', Colors.amber);
-        await Future.delayed(const Duration(seconds: 3));
-        if (!mounted) return;
-        Navigator.push(context, MaterialPageRoute(builder: (c) => const MyApp()));
-        setState(() => isLoading = false);
+        displaySnackBar('✅ تم إرسال رسالة تأكيد إلى بريدك الإلكتروني. يرجى تأكيد الحساب قبل تسجيل الدخول.', Colors.green);
       } on FirebaseAuthException catch (e) {
         displaySnackBar(e.code, Colors.red);
-        setState(() => isLoading = false);
       }
-    } on FirebaseAuthException catch (e) {
-      String errorMessage = e.code;
-      displaySnackBar(errorMessage, Colors.red);
+
       setState(() => isLoading = false);
-    } catch (_) {
+
+      await Future.delayed(const Duration(seconds: 3));
+      if (!mounted) return;
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (c) => const SignIn()),
+      );
+    } on FirebaseAuthException catch (e) {
+      displaySnackBar(e.message ?? e.code, Colors.red);
+      setState(() => isLoading = false);
+    } catch (e) {
+      displaySnackBar('حدث خطأ غير متوقع: $e', Colors.red);
       setState(() => isLoading = false);
     }
   }
@@ -213,7 +257,7 @@ class _SignUpState extends State<SignUp> {
       onPopInvoked: (didPop) {
         if (!didPop) {
           if (Navigator.canPop(context)) {
-            Navigator.pop(context); // ✅ يرجع للمصدر (SignIn إذا كنت جاي منه)
+            Navigator.pop(context);
           } else {
             Navigator.pushReplacement(
               context,
@@ -227,7 +271,6 @@ class _SignUpState extends State<SignUp> {
           fit: StackFit.expand,
           children: [
             Image.asset('assets/images/background.png', fit: BoxFit.cover),
-
             SafeArea(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
@@ -247,48 +290,43 @@ class _SignUpState extends State<SignUp> {
                       const SizedBox(height: 20),
 
                       // صورة الحساب
-                      Stack(
-                        alignment: Alignment.bottomRight,
-                        children: [
-                          CircleAvatar(
-                            radius: 55,
-                            backgroundColor: Colors.grey.withOpacity(0.2),
-                            backgroundImage: _pickedImage != null
-                                ? (kIsWeb
-                                ? NetworkImage(_pickedImage!.path)
-                                : FileImage(File(_pickedImage!.path))
-                            as ImageProvider)
-                                : null,
-                            child: _pickedImage == null
-                                ? SvgPicture.asset(
-                              'assets/svg/user_icon.svg',
-                              width: 50,
-                              height: 50,
-                              colorFilter: const ColorFilter.mode(
-                                  Color(0xFF988561), BlendMode.srcIn),
-                            )
-                                : null,
-                          ),
-                          InkWell(
-                            onTap: _pickImage,
-                            borderRadius: BorderRadius.circular(100),
-                            child: Container(
-                              decoration: const BoxDecoration(
-                                color: Color(0x30000000),
-                                shape: BoxShape.circle,
+                      // ✅ واجهة اختيار الصورة الجديدة (أيقونة واحدة فقط)
+                      // ✅ واجهة اختيار الصورة البسيطة (أيقونة فقط في الفراغ)
+                      // ✅ واجهة اختيار الصورة (أيقونة + نص "أضف صورتك")
+                      GestureDetector(
+                        onTap: _pickImage,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            _pickedImage != null
+                                ? ClipOval(
+                              child: Image.file(
+                                File(_pickedImage!.path),
+                                width: 95,
+                                height: 95,
+                                fit: BoxFit.cover,
                               ),
-                              padding: const EdgeInsets.all(8),
-                              child: SvgPicture.asset(
-                                'assets/svg/camera_icon1.svg',
-                                width: 20,
-                                height: 20,
-                                colorFilter: const ColorFilter.mode(
-                                    Colors.black, BlendMode.srcIn),
+                            )
+                                : SvgPicture.asset(
+                              'assets/svg/add_photo.svg', // 👈 غيّر هذا حسب اسم أيقونتك
+                              width: 100,
+                              height: 100,
+                            ),
+                            const SizedBox(height: 10),
+                            const Text(
+                              'أضف صورتك',
+                              style: TextStyle(
+                                fontSize: 15,
+                                color: Colors.black87,
+                                fontWeight: FontWeight.w500,
                               ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
+
+
+
                       const SizedBox(height: 24),
 
                       // الاسم الكامل
@@ -303,16 +341,16 @@ class _SignUpState extends State<SignUp> {
                               'assets/svg/name_icon.svg',
                               width: 12,
                               height: 12,
-                              colorFilter: const ColorFilter.mode(
-                                  Colors.black, BlendMode.srcIn),
+                              colorFilter:
+                              const ColorFilter.mode(Colors.black, BlendMode.srcIn),
                             ),
                           ),
                           filled: true,
                           fillColor: Colors.transparent,
                           border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(7),
-                              borderSide:
-                              const BorderSide(color: Colors.black26)),
+                            borderRadius: BorderRadius.circular(7),
+                            borderSide: const BorderSide(color: Colors.black26),
+                          ),
                         ),
                       ),
                       const SizedBox(height: 5),
@@ -329,16 +367,16 @@ class _SignUpState extends State<SignUp> {
                               'assets/svg/email_icon.svg',
                               width: 13,
                               height: 13,
-                              colorFilter: const ColorFilter.mode(
-                                  Colors.black, BlendMode.srcIn),
+                              colorFilter:
+                              const ColorFilter.mode(Colors.black, BlendMode.srcIn),
                             ),
                           ),
                           filled: true,
                           fillColor: Colors.transparent,
                           border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(7),
-                              borderSide:
-                              const BorderSide(color: Colors.black26)),
+                            borderRadius: BorderRadius.circular(7),
+                            borderSide: const BorderSide(color: Colors.black26),
+                          ),
                         ),
                       ),
                       const SizedBox(height: 5),
@@ -356,13 +394,12 @@ class _SignUpState extends State<SignUp> {
                               'assets/svg/password_icon.svg',
                               width: 22,
                               height: 22,
-                              colorFilter: const ColorFilter.mode(
-                                  Colors.black, BlendMode.srcIn),
+                              colorFilter:
+                              const ColorFilter.mode(Colors.black, BlendMode.srcIn),
                             ),
                           ),
                           suffixIcon: InkWell(
-                            onTap: () =>
-                                setState(() => obscurePassword = !obscurePassword),
+                            onTap: () => setState(() => obscurePassword = !obscurePassword),
                             child: Padding(
                               padding: const EdgeInsets.all(14.0),
                               child: SvgPicture.asset(
@@ -379,9 +416,9 @@ class _SignUpState extends State<SignUp> {
                           filled: true,
                           fillColor: Colors.transparent,
                           border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(7),
-                              borderSide:
-                              const BorderSide(color: Colors.black26)),
+                            borderRadius: BorderRadius.circular(7),
+                            borderSide: const BorderSide(color: Colors.black26),
+                          ),
                         ),
                       ),
                       const SizedBox(height: 5),
@@ -399,13 +436,12 @@ class _SignUpState extends State<SignUp> {
                               'assets/svg/password_icon.svg',
                               width: 13,
                               height: 13,
-                              colorFilter: const ColorFilter.mode(
-                                  Colors.black, BlendMode.srcIn),
+                              colorFilter:
+                              const ColorFilter.mode(Colors.black, BlendMode.srcIn),
                             ),
                           ),
                           suffixIcon: InkWell(
-                            onTap: () =>
-                                setState(() => obscureConfirm = !obscureConfirm),
+                            onTap: () => setState(() => obscureConfirm = !obscureConfirm),
                             child: Padding(
                               padding: const EdgeInsets.all(14.0),
                               child: SvgPicture.asset(
@@ -422,9 +458,9 @@ class _SignUpState extends State<SignUp> {
                           filled: true,
                           fillColor: Colors.transparent,
                           border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(7),
-                              borderSide:
-                              const BorderSide(color: Colors.black26)),
+                            borderRadius: BorderRadius.circular(7),
+                            borderSide: const BorderSide(color: Colors.black26),
+                          ),
                         ),
                       ),
                       const SizedBox(height: 22),
@@ -440,20 +476,31 @@ class _SignUpState extends State<SignUp> {
                             shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(7)),
                           ),
-                          onPressed: isLoading ? null : signUp,
-                          child: !isLoading
-                              ? const Text('فتح حساب جديد',
-                              style: TextStyle(fontSize: 15))
-                              : LoadingDialog(msg: 'جاري المصادقة'),
+                          onPressed: isLoading ? () {} : signUp,
+                          child: isLoading
+                              ? const SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2.5,
+                            ),
+                          )
+                              : const Text(
+                            'فتح حساب جديد',
+                            style: TextStyle(fontSize: 15),
+                          ),
                         ),
                       ),
+
                       const SizedBox(height: 24),
                       const Text('هل لديك حساب بالفعل؟',
                           style: TextStyle(color: Colors.black87)),
                       const SizedBox(height: 6),
+
                       Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 60, vertical: 0),
+                        padding:
+                        const EdgeInsets.symmetric(horizontal: 60, vertical: 0),
                         decoration: BoxDecoration(
                           color: const Color(0xFF988561),
                           borderRadius: BorderRadius.circular(8),
@@ -462,14 +509,14 @@ class _SignUpState extends State<SignUp> {
                           onPressed: () {
                             Navigator.push(
                               context,
-                              MaterialPageRoute(
-                                  builder: (c) => const SignIn()),
+                              MaterialPageRoute(builder: (c) => const SignIn()),
                             );
                           },
-                          child: const Text('أنقُر لتسجيل الدخول',
-                              style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold)),
+                          child: const Text(
+                            'أنقُر لتسجيل الدخول',
+                            style: TextStyle(
+                                color: Colors.white, fontWeight: FontWeight.bold),
+                          ),
                         ),
                       ),
                     ],

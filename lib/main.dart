@@ -13,6 +13,10 @@ import 'package:otaibah_app/services/notification_sender.dart';
 
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 
+import 'package:skeletonizer/skeletonizer.dart';
+import 'core/global_loader.dart'; // الملف اللي أنشأناه سابقًا
+
+
 // ✅ لازم نضيف هذا الجزء لاستقبال الإشعارات بالخلفية والمغلق
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -70,19 +74,63 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'العتيبة',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        fontFamily: 'PortadaAra',
-        progressIndicatorTheme: const ProgressIndicatorThemeData(
-          color: Color(0x25000000),
+    final globalLoading = ValueNotifier<bool>(false);
+
+    // 🎨 ألوان Skeletonizer حسب الثيم
+    final lightBase = const Color(0xFFE6E2DC);
+    final lightHighlight = const Color(0xFFF5F3EF);
+    final darkBase = const Color(0xFF3B3B3B);
+    final darkHighlight = const Color(0xFF5A5A5A);
+
+    final lightTheme = ThemeData(
+      fontFamily: 'PortadaAra',
+      scaffoldBackgroundColor: const Color(0xFFf6f6f6),
+      colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF988561)),
+      extensions: const [
+        SkeletonizerConfigData(
+          effect: ShimmerEffect(
+            baseColor: Color(0xFFE0E0E0),      // رمادي متوسط
+            highlightColor: Color(0xFFF5F5F5), // رمادي فاتح متحرك
+            duration: Duration(milliseconds: 3000), // حركة أبطأ وناعمة
+          ),
         ),
-        scaffoldBackgroundColor: const Color(0xFFf6f6f6),
+      ],
+    );
+
+    final darkTheme = ThemeData(
+      fontFamily: 'PortadaAra',
+      brightness: Brightness.dark,
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: Color(0xFF988561),
+        brightness: Brightness.dark,
       ),
-      home: const Directionality(
-        textDirection: TextDirection.rtl,
-        child: MyStatefulWidget(),
+      extensions: const [
+        SkeletonizerConfigData(
+          effect: ShimmerEffect(
+            baseColor: Color(0xFFE0E0E0),      // رمادي متوسط
+            highlightColor: Color(0xFFF5F5F5), // رمادي فاتح متحرك
+            duration: Duration(milliseconds: 3000), // حركة أبطأ وناعمة
+          ),
+        ),
+      ],
+    );
+
+    return GlobalLoader(
+      isLoading: globalLoading,
+      child: ValueListenableBuilder<bool>(
+        valueListenable: globalLoading,
+        builder: (_, __, ___) {
+          return MaterialApp(
+            title: 'العتيبة',
+            debugShowCheckedModeBanner: false,
+            theme: lightTheme,
+            darkTheme: darkTheme,
+            home: const Directionality(
+              textDirection: TextDirection.rtl,
+              child: MyStatefulWidget(),
+            ),
+          );
+        },
       ),
     );
   }

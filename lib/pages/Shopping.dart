@@ -8,11 +8,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../widgets/skeletons/shopping_skeleton.dart';
 import 'app_identity.dart';
 import 'shop_page.dart';
-
+import 'package:otaibah_app/widgets/otaibah_skeleton.dart';
 import 'my_orders_page.dart';
-import 'order_tracking_page.dart';
+
+import '../core/global_skeleton_wrapper.dart';
+import '../widgets/skeletons/shopping_skeleton.dart';
+
 
 class Shopping extends StatefulWidget {
   const Shopping({super.key});
@@ -29,7 +33,6 @@ class _ShoppingState extends State<Shopping>
   List<dynamic> shopsWithAllDetails = [];
   List<dynamic> shopsNames = [];
   List<Map<dynamic, dynamic>> shopsDetails = [];
-  bool loading = true;
 
   double get iconWidth => MediaQuery.sizeOf(context).width / 75;
   double get iconHeight => MediaQuery.sizeOf(context).height / 75;
@@ -297,9 +300,11 @@ class _ShoppingState extends State<Shopping>
     final urls = await _fetchBannerImages();
     setState(() {
       imageUrls = urls;
-      loading = false;
     });
   }
+
+
+
 
   Future<List<String>> _fetchBannerImages() async {
     final storageRef = FirebaseStorage.instance
@@ -539,562 +544,513 @@ class _ShoppingState extends State<Shopping>
 
 
   @override
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF8F8F8),
-
-      // ✅ AppBar علوي لفتح صفحة مفضلة المنشورات
-      /*appBar: AppBar(
-        title: const Text('المنشورات'),
-        centerTitle: true,
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black87,
-        elevation: 0.5,
-        actions: [
-          IconButton(
-            tooltip: 'المفضلة',
-            icon: const Icon(Icons.favorite_outline, color: Colors.black87),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const AnnouncementsFavoritesPage(),
-                ),
-              );
-            },
-          ),
-        ],
-      ),
-
-
-       */
-      body: Stack(
-        children: [
-      SafeArea(
-        child: Directionality(
-          textDirection: TextDirection.rtl,
-          child: SingleChildScrollView(
-            child: Column(
+      body: GlobalSkeletonWrapper(
+        loadFuture: _getCategories, // 👈 نفس دالة التحميل الحالية
+        skeletonBuilder: (_) => const ShoppingSkeleton(),
+        child: SafeArea(
+          child: Directionality(
+            textDirection: TextDirection.rtl,
+            child: Stack(
               children: [
-                const SizedBox(height: 7),
-                // ===== البانر =====
-                CarouselSlider(
-                  options: CarouselOptions(
-                    height: 160,
-                    autoPlay: true,
-                    autoPlayInterval: const Duration(seconds: 5),
-                    enlargeCenterPage: true,
-                    viewportFraction: 1.0,
-                  ),
-                  items: imageUrls.map((url) {
-                    return Builder(
-                      builder: (context) {
-                        return SizedBox(
+                SingleChildScrollView(
+                  child: Column(
+                    children: [
+                      const SizedBox(height: 7),
+                      // ===== البانر =====
+                      CarouselSlider(
+                        options: CarouselOptions(
                           height: 160,
-                          width: MediaQuery.of(context).size.width,
-                          child: Stack(
-                            children: [
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(7),
-                                child: Image.network(
-                                  url,
-                                  width: double.infinity,
-                                  height: 160,
-                                  fit: BoxFit.cover,
-                                  loadingBuilder: (context, child, progress) {
-                                    if (progress == null) return child;
-                                    return const Center(
-                                      child: CircularProgressIndicator(),
-                                    );
-                                  },
-                                ),
-                              ),
-                              Positioned(
-                                top: 0,
-                                right: 0,
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                    vertical: 4,
-                                  ),
-                                  decoration: const BoxDecoration(
-                                    color: Color(0xFF988561),
-                                    borderRadius: BorderRadius.only(
-                                      topRight: Radius.circular(7),
-                                    ),
-                                  ),
-                                  child: const Text(
-                                    "إعلان مُمَوّل",
-                                    style: TextStyle(
-                                      color: Color(0xFFedebdf),
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w400,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                    );
-                  }).toList(),
-                ),
-                const SizedBox(height: 4),
-                // ===== مربع البحث =====
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 0,
-                    vertical: 0,
-                  ),
-                  child: TextField(
-                    controller: _searchController,
-                    style: const TextStyle(color: Colors.black, fontSize: 14),
-                    decoration: InputDecoration(
-                      filled: true,
-                      fillColor: const Color(0x20a7a9ac),
-                      hintText: "عن ماذا تبحث...",
-                      hintStyle: const TextStyle(
-                        color: Color(0x70000000),
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      prefixIcon: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 10,
+                          autoPlay: true,
+                          autoPlayInterval: const Duration(seconds: 5),
+                          enlargeCenterPage: true,
+                          viewportFraction: 1.0,
                         ),
-                        child: SvgPicture.asset(
-                          'assets/svg/search.svg',
-                          width: 22,
-                          height: 22,
-                          colorFilter: const ColorFilter.mode(
-                            Color(0x70000000),
-                            BlendMode.srcIn,
-                          ),
-                        ),
-                      ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: BorderSide.none,
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 10,
-                      ),
-                    ),
-                  ),
-                ),
-                SizedBox(
-                  height: 45,
-                  child: ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    physics: const ClampingScrollPhysics(),
-                    itemCount: shopsCategoryNames.length,
-                    itemBuilder: (context, index) {
-                      bool isSelected = _selectedCategory == shopsCategoryNames[index]; // ← غيّر لاحقًا حسب الحالة
-
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 0),
-                        child: Card(
-                          color: isSelected
-                              ? const Color(0x20a7a9ac) // اللون الذهبي عند التحديد
-                              : const Color(0x20a7a9ac), // خلفية فاتحة عادية
-                          elevation: isSelected ? 0 : 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(4.0),
-                          ),
-                          child: TextButton(
-                            style: TextButton.styleFrom(
-                              foregroundColor:
-                              isSelected ? Color(0xFF000000) : const Color(0xFF000000),
-                              padding:
-                              const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                            ),
-                            onPressed: () {
-                              final selected = shopsCategoryNames[index];
-                              if (_selectedCategory == selected) {
-                                _filterByCategory(null); // إلغاء التحديد لو ضغط نفس القسم
-                              } else {
-                                _filterByCategory(selected);
-                              }
-                            },
-
-                            child: Text(
-                              shopsCategoryNames[index],
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: isSelected ? FontWeight.w500 : FontWeight.w400,
-                              ),
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-
-                // القائمة العمودية (ListView.builder)
-                // ===== قائمة المتاجر =====
-                ListView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: _visibleShops.length,
-                  itemBuilder: (context, index) {
-                    final shop = _visibleShops[index];
-
-                    // حماية من القيم الفارغة
-                    if (shop == null || shop.isEmpty) {
-                      return const SizedBox.shrink();
-                    }
-
-                    final String name = shop['name']?.toString() ?? '';
-                    final String category = shop['category']?.toString() ?? '';
-                    final String imageUrl = shop['imageUrl']?.toString() ?? '';
-                    final String discount = shop['discountText']?.toString() ?? '';
-                    final String deliveryTime = shop['deliveryTime']?.toString() ?? '';
-                    final String deliveryMethod = shop['deliveryMethod']?.toString() ?? '';
-                    final String openTime = shop['openTime']?.toString() ?? '';
-                    final String closeTime = shop['closeTime']?.toString() ?? '';
-                    final String description = shop['description']?.toString() ?? '';
-                    final bool verified = shop['verified'] == true;
-
-                    return GestureDetector(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => ShopPage(shopData: shop),
-                          ),
-                        );
-                      },
-
-                      child: Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 0, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Color(0x20a7a9ac),
-                          borderRadius: BorderRadius.circular(7),
-                          boxShadow: [
-                          ],
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // 🖼️ صورة المتجر مع شارات (جديد / خصم)
-                            Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                              child: ClipRRect(
-                                borderRadius: const BorderRadius.only(
-                                  topLeft: Radius.circular(7),
-                                  topRight: Radius.circular(7),
-                                  bottomLeft: Radius.circular(7),
-                                  bottomRight: Radius.circular(7),
-                                ),
+                        items: imageUrls.map((url) {
+                          return Builder(
+                            builder: (context) {
+                              return SizedBox(
+                                height: 160,
+                                width: MediaQuery.of(context).size.width,
                                 child: Stack(
                                   children: [
-                                    AspectRatio(
-                                      aspectRatio: 2.35,
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(7),
                                       child: Image.network(
-                                        imageUrl,
+                                        url,
+                                        width: double.infinity,
+                                        height: 160,
                                         fit: BoxFit.cover,
-                                        errorBuilder: (_, __, ___) => Container(
-                                          color: Colors.grey[300],
-                                          child: const Center(
-                                            child: Icon(Icons.store, size: 60, color: Colors.white),
+                                        loadingBuilder: (context, child, progress) {
+                                          if (progress == null) return child;
+                                          return const Center(
+                                            child: CircularProgressIndicator(),
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                    Positioned(
+                                      top: 0,
+                                      right: 0,
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 10,
+                                          vertical: 4,
+                                        ),
+                                        decoration: const BoxDecoration(
+                                          color: Color(0xFF988561),
+                                          borderRadius: BorderRadius.only(
+                                            topRight: Radius.circular(7),
+                                          ),
+                                        ),
+                                        child: const Text(
+                                          "إعلان مُمَوّل",
+                                          style: TextStyle(
+                                            color: Color(0xFFedebdf),
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w400,
                                           ),
                                         ),
                                       ),
                                     ),
-
-                                    // 🔹 شارة "خصم"
-                                    if (discount.isNotEmpty)
-                                      Positioned(
-                                        top: 0,
-                                        left: 0,
-                                        child: Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
-                                          child: Row(
-                                            children: [
-                                              Image.asset(
-                                                'assets/images/discount_icon_above.png',
-                                                width: 45,
-                                                height: 45,
-                                                fit: BoxFit.contain,
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ),
-
-                                    // 🔸 شارة "جديد"
-                                    if (shop['createdAt'] != null)
-                                      Builder(builder: (context) {
-                                        final createdAt = DateTime.tryParse(shop['createdAt']);
-                                        final now = DateTime.now();
-                                        final isNew = createdAt != null &&
-                                            now.difference(createdAt).inDays <= 30;
-                                        if (!isNew) return const SizedBox.shrink();
-
-                                        return Positioned(
-                                          top: 0,
-                                          right: 0,
-                                          child: Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 0),
-                                            child: Row(
-                                              children: [
-                                                Image.asset(
-                                                  'assets/images/new_icon.png',
-                                                  width: 40,
-                                                  height: 40,
-                                                  fit: BoxFit.contain,
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        );
-                                      }),
                                   ],
+                                ),
+                              );
+                            },
+                          );
+                        }).toList(),
+                      ),
+                      const SizedBox(height: 4),
+                      // ===== مربع البحث =====
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 0,
+                          vertical: 0,
+                        ),
+                        child: TextField(
+                          controller: _searchController,
+                          style: const TextStyle(color: Colors.black, fontSize: 14),
+                          decoration: InputDecoration(
+                            filled: true,
+                            fillColor: const Color(0x20a7a9ac),
+                            hintText: "عن ماذا تبحث...",
+                            hintStyle: const TextStyle(
+                              color: Color(0x70000000),
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            prefixIcon: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 10,
+                              ),
+                              child: SvgPicture.asset(
+                                'assets/svg/search.svg',
+                                width: 22,
+                                height: 22,
+                                colorFilter: const ColorFilter.mode(
+                                  Color(0x70000000),
+                                  BlendMode.srcIn,
                                 ),
                               ),
                             ),
-
-                            // ======================= محتوى التفاصيل =======================
-                            Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                              child: Directionality( // 👈 يجعل الاتجاه RTL مضبوط
-                                textDirection: TextDirection.rtl,
-                                child: Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    // ✅ العمود الأيمن (الاسم + التوثيق + الوصف + الخصم)
-                                    Expanded(
-                                      flex: 1,
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start, // الآن يصبح لليمين في RTL
-                                        children: [
-                                          // الاسم + التوثيق
-                                          Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              Flexible(
-                                                child: Text(
-                                                  name,
-                                                  style: const TextStyle(
-                                                    fontSize: 16,
-                                                    fontWeight: FontWeight.bold,
-                                                    color: Colors.black87,
-                                                  ),
-                                                  overflow: TextOverflow.ellipsis,
-                                                ),
-                                              ),
-                                              if (verified) ...[
-                                                const SizedBox(width: 2),
-                                                Transform.translate(
-                                                  offset: const Offset(0, -8),
-                                                  child: SvgPicture.asset(
-                                                    'assets/svg/verified.svg',
-                                                    width: 13,
-                                                    height: 13,
-                                                  ),
-                                                ),
-                                              ],
-                                            ],
-                                          ),
-
-                                          const SizedBox(height: 4),
-
-                                          // 🔹 الوصف
-                                          SizedBox(
-                                            width: MediaQuery.of(context).size.width * 0.5,
-                                            child: Text(
-                                              description,
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                              textAlign: TextAlign.right,
-                                              style: const TextStyle(
-                                                fontSize: 11,
-                                                color: Colors.black,
-                                                height: 1.3,
-                                              ),
-                                            ),
-                                          ),
-
-                                          const SizedBox(height: 6),
-
-                                          // 🔸 الخصم
-                                          if (discount.isNotEmpty)
-                                            Stack(
-                                              clipBehavior: Clip.none,
-                                              children: [
-                                                // صندوق الخصم – أضفنا padding يمين ليفسح مكان الأيقونة
-                                                Container(
-                                                  margin: const EdgeInsets.only(top: 4),
-                                                  padding: const EdgeInsets.only(
-                                                    right: 30,      // ← مساحة ثابتة للأيقونة
-                                                    left: 10,
-                                                    top: 5,
-                                                    bottom: 5,
-                                                  ),
-                                                  decoration: BoxDecoration(
-                                                    color: const Color(0xFF6b1f2a),
-                                                    borderRadius: BorderRadius.circular(6),
-                                                  ),
-                                                  child: Text(
-                                                    discount,
-                                                    style: const TextStyle(
-                                                      color: Color(0xFFedebe0),
-                                                      fontSize: 10,
-                                                      fontWeight: FontWeight.w400,
-                                                    ),
-                                                    overflow: TextOverflow.ellipsis,
-                                                  ),
-                                                ),
-
-                                                // الأيقونة داخل حدود الصندوق (بدون خروج يمين)
-                                                Positioned(
-                                                  right: 3,   // ← بدل -4 حتى تبقى داخل الصندوق
-                                                  top: -0,    // بروز خفيف للأعلى
-                                                  child: Image.asset(
-                                                    'assets/images/discount_icon.png',
-                                                    width: 25,
-                                                    height: 25,
-                                                    fit: BoxFit.contain,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-
-                                        ],
-                                      ),
-                                    ),
-
-                                    const SizedBox(width: 0),
-
-
-                                    // ✅ العمود الأيسر (التوصيل + أوقات العمل)
-                                    // ✅ العمود الأيسر (التوصيل + أوقات العمل)
-                                    Expanded(
-                                      flex: 1,
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.end, // لأن التطبيق RTL
-                                        children: [
-                                          // 1️⃣ مدة التوصيل
-                                          Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            mainAxisAlignment: MainAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                'خلال $deliveryTime ${deliveryTime == "1" ? "دقيقة" : "دقائق"}',
-                                                style: const TextStyle(
-                                                  fontSize: 12,
-                                                  color: Colors.black,
-                                                ),
-                                              ),
-                                              const SizedBox(width: 6),
-                                              Image.asset(
-                                                'assets/images/time_delivery.png',
-                                                width: 15,
-                                                height: 15,
-                                                fit: BoxFit.contain,
-                                              ),
-                                            ],
-                                          ),
-
-                                          const SizedBox(height: 6),
-
-                                          // 2️⃣ طريقة التوصيل
-                                          Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            mainAxisAlignment: MainAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                'عبر $deliveryMethod',
-                                                style: const TextStyle(
-                                                  fontSize: 12,
-                                                  color: Colors.black,
-                                                ),
-                                              ),
-                                              const SizedBox(width: 6),
-                                              Image.asset(
-                                                'assets/images/delivery_method.png',
-                                                width: 15,
-                                                height: 15,
-                                                fit: BoxFit.contain,
-                                              ),
-                                            ],
-                                          ),
-
-                                          const SizedBox(height: 6),
-
-                                          // 3️⃣ أوقات العمل
-                                          if (openTime.isNotEmpty && closeTime.isNotEmpty)
-                                            Row(
-                                              mainAxisSize: MainAxisSize.min,
-                                              mainAxisAlignment: MainAxisAlignment.start,
-                                              children: [
-                                                Text(
-                                                  'من $openTime إلى $closeTime',
-                                                  style: const TextStyle(
-                                                    fontSize: 12,
-                                                    color: Colors.black,
-                                                  ),
-                                                ),
-                                                const SizedBox(width: 6),
-                                                Image.asset(
-                                                  'assets/images/clock.png',
-                                                  width: 15,
-                                                  height: 15,
-                                                  fit: BoxFit.contain,
-                                                ),
-                                              ],
-                                            ),
-                                        ],
-                                      ),
-                                    ),
-
-                                  ],
-                                ),
-                              ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide: BorderSide.none,
                             ),
-                          ],
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 10,
+                            ),
+                          ),
                         ),
                       ),
-                    );
-                  },
+                      SizedBox(
+                        height: 45,
+                        child: ListView.builder(
+                          scrollDirection: Axis.horizontal,
+                          physics: const ClampingScrollPhysics(),
+                          itemCount: shopsCategoryNames.length,
+                          itemBuilder: (context, index) {
+                            bool isSelected =
+                                _selectedCategory == shopsCategoryNames[index]; // ← غيّر لاحقًا حسب الحالة
+
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 0),
+                              child: Card(
+                                color: isSelected
+                                    ? const Color(0x20a7a9ac)
+                                    : const Color(0x20a7a9ac),
+                                elevation: isSelected ? 0 : 0,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(4.0),
+                                ),
+                                child: TextButton(
+                                  style: TextButton.styleFrom(
+                                    foregroundColor: isSelected
+                                        ? const Color(0xFF000000)
+                                        : const Color(0xFF000000),
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 16, vertical: 8),
+                                  ),
+                                  onPressed: () {
+                                    final selected = shopsCategoryNames[index];
+                                    if (_selectedCategory == selected) {
+                                      _filterByCategory(null);
+                                    } else {
+                                      _filterByCategory(selected);
+                                    }
+                                  },
+                                  child: Text(
+                                    shopsCategoryNames[index],
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight:
+                                      isSelected ? FontWeight.w500 : FontWeight.w400,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      // ===== قائمة المتاجر =====
+                      ListView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: _visibleShops.length,
+                        itemBuilder: (context, index) {
+                          final shop = _visibleShops[index];
+
+                          if (shop == null || shop.isEmpty) {
+                            return const SizedBox.shrink();
+                          }
+
+                          final String name = shop['name']?.toString() ?? '';
+                          final String category = shop['category']?.toString() ?? '';
+                          final String imageUrl = shop['imageUrl']?.toString() ?? '';
+                          final String discount = shop['discountText']?.toString() ?? '';
+                          final String deliveryTime =
+                              shop['deliveryTime']?.toString() ?? '';
+                          final String deliveryMethod =
+                              shop['deliveryMethod']?.toString() ?? '';
+                          final String openTime = shop['openTime']?.toString() ?? '';
+                          final String closeTime = shop['closeTime']?.toString() ?? '';
+                          final String description =
+                              shop['description']?.toString() ?? '';
+                          final bool verified = shop['verified'] == true;
+
+                          return GestureDetector(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => ShopPage(shopData: shop),
+                                ),
+                              );
+                            },
+                            child: Container(
+                              margin: const EdgeInsets.symmetric(
+                                  horizontal: 0, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: const Color(0x20a7a9ac),
+                                borderRadius: BorderRadius.circular(7),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 8, vertical: 8),
+                                    child: ClipRRect(
+                                      borderRadius: const BorderRadius.all(
+                                        Radius.circular(7),
+                                      ),
+                                      child: Stack(
+                                        children: [
+                                          AspectRatio(
+                                            aspectRatio: 2.35,
+                                            child: Image.network(
+                                              imageUrl,
+                                              fit: BoxFit.cover,
+                                              errorBuilder: (_, __, ___) => Container(
+                                                color: Colors.grey[300],
+                                                child: const Center(
+                                                  child: Icon(Icons.store,
+                                                      size: 60, color: Colors.white),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                          if (discount.isNotEmpty)
+                                            Positioned(
+                                              top: 0,
+                                              left: 0,
+                                              child: Container(
+                                                padding: const EdgeInsets.symmetric(
+                                                    horizontal: 12, vertical: 0),
+                                                child: Row(
+                                                  children: [
+                                                    Image.asset(
+                                                      'assets/images/discount_icon_above.png',
+                                                      width: 45,
+                                                      height: 45,
+                                                      fit: BoxFit.contain,
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
+                                          if (shop['createdAt'] != null)
+                                            Builder(builder: (context) {
+                                              final createdAt = DateTime.tryParse(
+                                                  shop['createdAt']);
+                                              final now = DateTime.now();
+                                              final isNew = createdAt != null &&
+                                                  now.difference(createdAt).inDays <= 30;
+                                              if (!isNew)
+                                                return const SizedBox.shrink();
+
+                                              return Positioned(
+                                                top: 0,
+                                                right: 0,
+                                                child: Container(
+                                                  padding: const EdgeInsets.symmetric(
+                                                      horizontal: 0, vertical: 0),
+                                                  child: Row(
+                                                    children: [
+                                                      Image.asset(
+                                                        'assets/images/new_icon.png',
+                                                        width: 40,
+                                                        height: 40,
+                                                        fit: BoxFit.contain,
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              );
+                                            }),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 8, vertical: 6),
+                                    child: Directionality(
+                                      textDirection: TextDirection.rtl,
+                                      child: Row(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Expanded(
+                                            flex: 1,
+                                            child: Column(
+                                              crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                              children: [
+                                                Row(
+                                                  mainAxisSize: MainAxisSize.min,
+                                                  children: [
+                                                    Flexible(
+                                                      child: Text(
+                                                        name,
+                                                        style: const TextStyle(
+                                                          fontSize: 16,
+                                                          fontWeight: FontWeight.bold,
+                                                          color: Colors.black87,
+                                                        ),
+                                                        overflow: TextOverflow.ellipsis,
+                                                      ),
+                                                    ),
+                                                    if (verified) ...[
+                                                      const SizedBox(width: 2),
+                                                      Transform.translate(
+                                                        offset: const Offset(0, -8),
+                                                        child: SvgPicture.asset(
+                                                          'assets/svg/verified.svg',
+                                                          width: 13,
+                                                          height: 13,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ],
+                                                ),
+                                                const SizedBox(height: 4),
+                                                SizedBox(
+                                                  width: MediaQuery.of(context)
+                                                      .size
+                                                      .width *
+                                                      0.5,
+                                                  child: Text(
+                                                    description,
+                                                    maxLines: 1,
+                                                    overflow:
+                                                    TextOverflow.ellipsis,
+                                                    textAlign: TextAlign.right,
+                                                    style: const TextStyle(
+                                                      fontSize: 11,
+                                                      color: Colors.black,
+                                                      height: 1.3,
+                                                    ),
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 6),
+                                                if (discount.isNotEmpty)
+                                                  Stack(
+                                                    clipBehavior: Clip.none,
+                                                    children: [
+                                                      Container(
+                                                        margin:
+                                                        const EdgeInsets.only(top: 4),
+                                                        padding: const EdgeInsets.only(
+                                                          right: 30,
+                                                          left: 10,
+                                                          top: 5,
+                                                          bottom: 5,
+                                                        ),
+                                                        decoration: BoxDecoration(
+                                                          color: const Color(0xFF6b1f2a),
+                                                          borderRadius:
+                                                          BorderRadius.circular(6),
+                                                        ),
+                                                        child: Text(
+                                                          discount,
+                                                          style: const TextStyle(
+                                                            color:
+                                                            Color(0xFFedebe0),
+                                                            fontSize: 10,
+                                                            fontWeight:
+                                                            FontWeight.w400,
+                                                          ),
+                                                          overflow:
+                                                          TextOverflow.ellipsis,
+                                                        ),
+                                                      ),
+                                                      Positioned(
+                                                        right: 3,
+                                                        top: -0,
+                                                        child: Image.asset(
+                                                          'assets/images/discount_icon.png',
+                                                          width: 25,
+                                                          height: 25,
+                                                          fit: BoxFit.contain,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                              ],
+                                            ),
+                                          ),
+                                          const SizedBox(width: 0),
+                                          Expanded(
+                                            flex: 1,
+                                            child: Column(
+                                              crossAxisAlignment:
+                                              CrossAxisAlignment.end,
+                                              children: [
+                                                Row(
+                                                  mainAxisSize: MainAxisSize.min,
+                                                  children: [
+                                                    Text(
+                                                      'خلال $deliveryTime ${deliveryTime == "1" ? "دقيقة" : "دقائق"}',
+                                                      style: const TextStyle(
+                                                        fontSize: 12,
+                                                        color: Colors.black,
+                                                      ),
+                                                    ),
+                                                    const SizedBox(width: 6),
+                                                    Image.asset(
+                                                      'assets/images/time_delivery.png',
+                                                      width: 15,
+                                                      height: 15,
+                                                      fit: BoxFit.contain,
+                                                    ),
+                                                  ],
+                                                ),
+                                                const SizedBox(height: 6),
+                                                Row(
+                                                  mainAxisSize: MainAxisSize.min,
+                                                  children: [
+                                                    Text(
+                                                      'عبر $deliveryMethod',
+                                                      style: const TextStyle(
+                                                        fontSize: 12,
+                                                        color: Colors.black,
+                                                      ),
+                                                    ),
+                                                    const SizedBox(width: 6),
+                                                    Image.asset(
+                                                      'assets/images/delivery_method.png',
+                                                      width: 15,
+                                                      height: 15,
+                                                      fit: BoxFit.contain,
+                                                    ),
+                                                  ],
+                                                ),
+                                                const SizedBox(height: 6),
+                                                if (openTime.isNotEmpty &&
+                                                    closeTime.isNotEmpty)
+                                                  Row(
+                                                    mainAxisSize: MainAxisSize.min,
+                                                    children: [
+                                                      Text(
+                                                        'من $openTime إلى $closeTime',
+                                                        style: const TextStyle(
+                                                          fontSize: 12,
+                                                          color: Colors.black,
+                                                        ),
+                                                      ),
+                                                      const SizedBox(width: 6),
+                                                      Image.asset(
+                                                        'assets/images/clock.png',
+                                                        width: 15,
+                                                        height: 15,
+                                                        fit: BoxFit.contain,
+                                                      ),
+                                                    ],
+                                                  ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+                Align(
+                  alignment: Alignment.bottomLeft,
+                  child: Padding(
+                    padding: const EdgeInsets.only(left: 12, bottom: 20),
+                    child: _floatingSquareButton(Icons.receipt_long, "طلباتي", () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const MyOrdersPage()),
+                      );
+                    }),
+                  ),
                 ),
               ],
             ),
           ),
         ),
       ),
-
-          // ===== الأزرار السفلية (طلباتي + تتبع الطلب) =====
-          Positioned(
-            bottom: 20,
-            left: 8,
-            child: Row(
-              children: [
-                _floatingSquareButton(Icons.receipt_long, "طلباتي", () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const MyOrdersPage()),
-                  );
-                }),
-                const SizedBox(width: 12),
-                _floatingSquareButton(Icons.local_shipping, "تتبع الطلب", () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const OrderTrackingPage(orderId: 'none')),
-                  );
-                }),
-              ],
-            ),
-          ),
-        ],
-      ),
     );
   }
+
 
   Widget _floatingSquareButton(IconData icon, String label, VoidCallback onTap) {
     return GestureDetector(

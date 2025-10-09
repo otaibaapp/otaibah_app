@@ -16,6 +16,7 @@ class SignIn extends StatefulWidget {
 }
 
 class _SignInState extends State<SignIn> {
+  bool obscurePassword = true;
   Future<void> saveLoginStatus(bool isLoggedIn) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('isEmailVerified', isLoggedIn);
@@ -160,7 +161,7 @@ class _SignInState extends State<SignIn> {
                       TextField(
                         textAlign: TextAlign.right,
                         controller: passwordController,
-                        obscureText: true,
+                        obscureText: obscurePassword,
                         decoration: InputDecoration(
                           hintText: 'كلمة المرور',
                           hintStyle: const TextStyle(color: Colors.black54),
@@ -173,13 +174,20 @@ class _SignInState extends State<SignIn> {
                               colorFilter: const ColorFilter.mode(Colors.black, BlendMode.srcIn),
                             ),
                           ),
-                          suffixIcon: Padding(
-                            padding: const EdgeInsets.all(14.0),
-                            child: SvgPicture.asset(
-                              'assets/svg/eye_closed.svg',
-                              width: 13,
-                              height: 13,
-                              colorFilter: const ColorFilter.mode(Colors.black, BlendMode.srcIn),
+                          suffixIcon: InkWell(
+                            onTap: () {
+                              setState(() => obscurePassword = !obscurePassword);
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.all(14.0),
+                              child: SvgPicture.asset(
+                                obscurePassword
+                                    ? 'assets/svg/eye_closed.svg'
+                                    : 'assets/svg/eye_open.svg',
+                                width: 13,
+                                height: 13,
+                                colorFilter: const ColorFilter.mode(Colors.black, BlendMode.srcIn),
+                              ),
                             ),
                           ),
                           filled: true,
@@ -194,6 +202,7 @@ class _SignInState extends State<SignIn> {
                           ),
                         ),
                       ),
+
                       const SizedBox(height: 22),
 
                       // زر تسجيل الدخول

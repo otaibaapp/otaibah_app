@@ -2,6 +2,8 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
+import '../core/global_skeleton_wrapper.dart';
+import '../widgets/skeletons/shop_page_skeleton.dart';
 import 'cart_page.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
@@ -342,9 +344,12 @@ class _ShopPageState extends State<ShopPage> {
         ),
 
 
-        body: SafeArea(
-        child: Stack(
-          children: [
+      body: GlobalSkeletonWrapper(
+        skeletonBuilder: (_) => const ShopPageSkeleton(),
+        loadFuture: _loadShop, // نفس دالة التحميل الحالية
+        child: SafeArea(
+          child: Stack(
+            children: [
             // ===== المحتوى =====
             Directionality(
               textDirection: TextDirection.rtl,
@@ -828,6 +833,7 @@ class _ShopPageState extends State<ShopPage> {
             ),
           ],
         ),
+        ),
       ),
     );
 
@@ -875,7 +881,7 @@ class _ShopPageState extends State<ShopPage> {
         ),
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 2,
-          childAspectRatio: 0.67,
+          childAspectRatio: 0.66,
           crossAxisSpacing: 0,
           mainAxisSpacing: 0,
         ),

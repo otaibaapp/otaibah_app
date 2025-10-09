@@ -52,6 +52,25 @@
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"
             android:value="otaibah_channel" />
+
+        <!-- 👇 ضروري لأداة القصّ UCrop -->
+        <activity
+            android:name="com.yalantis.ucrop.UCropActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.AppCompat.Light.NoActionBar"/>
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/provider_paths"/>
+        </provider>
+
+
     </application>
 
     <!-- ⚙️ السماح بقراءة النصوص -->

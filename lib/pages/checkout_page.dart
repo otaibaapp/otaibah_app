@@ -4,6 +4,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
+import 'Shopping.dart';
 import 'full_map_page.dart';
 import 'package:otaibah_app/services/notification_sender.dart';
 
@@ -13,6 +14,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/services.dart';
 
 
+import 'my_orders_page.dart';
 import 'order_tracking_page.dart';
 //import 'package:intl/intl.dart';
 
@@ -835,11 +837,17 @@ class _CheckoutPageState extends State<CheckoutPage> {
                         const SnackBar(content: Text("✅ تم إرسال الطلب بنجاح")),
                       );
 
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => OrderTrackingPage(orderId: orderRef.key!)),
-                      );
-                    },
+                    // ✅ بعد إرسال الطلب، نوجّه المستخدم إلى صفحة "طلباتي"
+                    // ✅ بعد إرسال الطلب، نوجّه المستخدم إلى صفحة تتبع الطلب
+                    // ✅ بعد إرسال الطلب، نوجّه المستخدم إلى صفحة "طلباتي"
+                    Navigator.pushAndRemoveUntil(
+                      context,
+                      MaterialPageRoute(builder: (_) => const MyOrdersPage(fromCheckout: true)),
+                          (route) => false,
+                    );
+
+
+                  },
 
                   style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.black,
