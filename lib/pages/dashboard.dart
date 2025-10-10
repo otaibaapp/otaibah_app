@@ -145,7 +145,7 @@ class _DashboardState extends State<Dashboard>
 
                       const SizedBox(width: 8),
                       Text(
-                        '$shownNameمرحبا بك: ',
+                        'مرحبا بك $shownName',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
