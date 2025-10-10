@@ -15,6 +15,7 @@ import 'announcements.dart';
 import 'announcements_favorites_page.dart'; // ✅ مفضلة الإعلانات
 import 'donations.dart';
 import 'favorites_page.dart'; // ✅ مفضلة السوق المفتوح
+import '../widgets/global_banner.dart'; // ✅ بانر موحد
 
 class Dashboard extends StatefulWidget {
   final int initialIndex; // ✅ لتحديد التبويب الافتراضي
@@ -55,7 +56,6 @@ class _DashboardState extends State<Dashboard>
     setState(() {
       shownName = prefs.getString('name').toString();
       userProfileImage = prefs.getString('profileImgUrl')!.toString();
-      //userProfileImage = FirebaseAuth.instance.currentUser!.photoURL!;
     });
   }
 
@@ -72,10 +72,10 @@ class _DashboardState extends State<Dashboard>
   }
 
   Future<void> saveLoginStatus(
-    bool isLoggedIn,
-    String shownName,
-    String userProfileImage,
-  ) async {
+      bool isLoggedIn,
+      String shownName,
+      String userProfileImage,
+      ) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('isEmailVerified', isLoggedIn);
     prefs.setString('name', shownName);
@@ -101,7 +101,7 @@ class _DashboardState extends State<Dashboard>
     double labelFontSize = MediaQuery.of(context).size.width * 0.03;
 
     return Directionality(
-      textDirection: TextDirection.rtl, // ✅ تثبيت الاتجاه
+      textDirection: TextDirection.rtl,
       child: Scaffold(
         extendBodyBehindAppBar: true,
         backgroundColor: const Color(0xFFf6f6f6),
@@ -131,22 +131,21 @@ class _DashboardState extends State<Dashboard>
                         borderRadius: BorderRadius.circular(17),
                         child: (userProfileImage.isNotEmpty)
                             ? CachedNetworkImage(
-                                width: 45,
-                                height: 45,
-                                fit: BoxFit.cover,
-                                imageUrl: userProfileImage,
-                              )
+                          width: 45,
+                          height: 45,
+                          fit: BoxFit.cover,
+                          imageUrl: userProfileImage,
+                        )
                             : SvgPicture.asset(
-                                'assets/svg/name_icon.svg',
-                                width: 45,
-                                height: 45,
-                              ),
+                          'assets/svg/name_icon.svg',
+                          width: 45,
+                          height: 45,
+                        ),
                       ),
-
                       const SizedBox(width: 8),
                       Text(
                         'مرحبا بك $shownName',
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                           overflow: TextOverflow.ellipsis,
@@ -166,7 +165,7 @@ class _DashboardState extends State<Dashboard>
                           Navigator.of(context).push(
                             MaterialPageRoute(
                               builder: (_) =>
-                                  const AnnouncementsFavoritesPage(),
+                              const AnnouncementsFavoritesPage(),
                             ),
                           );
                         },
@@ -207,7 +206,7 @@ class _DashboardState extends State<Dashboard>
           ),
         ),
 
-        // ✅ الجسم الرئيسي
+        // ✅ الجسم الرئيسي مع دعم البانر
         body: Container(
           color: const Color(0xFFf6f6f6),
           child: Padding(
@@ -216,12 +215,12 @@ class _DashboardState extends State<Dashboard>
               physics: const NeverScrollableScrollPhysics(),
               controller: controller,
               children: const [
-                Announcements(),
-                OpenSouq(),
-                Shopping(),
-                Services(),
-                Education(),
-                Donations(),
+                _TabPageWithBanner(child: Announcements()),
+                _TabPageWithBanner(child: OpenSouq()),
+                _TabPageWithBanner(child: Shopping()),
+                _TabPageWithBanner(child: Services()),
+                _TabPageWithBanner(child: Education()),
+                _TabPageWithBanner(child: Donations()),
               ],
             ),
           ),
@@ -379,5 +378,34 @@ class _DashboardState extends State<Dashboard>
   void dispose() {
     controller!.dispose();
     super.dispose();
+  }
+}
+
+class _TabPageWithBanner extends StatelessWidget {
+  final Widget child;
+  const _TabPageWithBanner({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Directionality(
+        textDirection: TextDirection.rtl,
+        child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 7),
+                const GlobalBanner(), // ✅ البانر الموحد
+                const SizedBox(height: 10),
+                child, // 👈 الصفحة نفسها
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
