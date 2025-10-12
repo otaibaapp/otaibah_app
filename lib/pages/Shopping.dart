@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../widgets/global_banner.dart';
 import '../widgets/skeletons/shopping_skeleton.dart';
 import 'app_identity.dart';
 import 'shop_page.dart';
@@ -561,68 +562,7 @@ class _ShoppingState extends State<Shopping>
                     children: [
                       const SizedBox(height: 7),
                       // ===== البانر =====
-                      CarouselSlider(
-                        options: CarouselOptions(
-                          height: 160,
-                          autoPlay: true,
-                          autoPlayInterval: const Duration(seconds: 5),
-                          enlargeCenterPage: true,
-                          viewportFraction: 1.0,
-                        ),
-                        items: imageUrls.map((url) {
-                          return Builder(
-                            builder: (context) {
-                              return SizedBox(
-                                height: 160,
-                                width: MediaQuery.of(context).size.width,
-                                child: Stack(
-                                  children: [
-                                    ClipRRect(
-                                      borderRadius: BorderRadius.circular(7),
-                                      child: Image.network(
-                                        url,
-                                        width: double.infinity,
-                                        height: 160,
-                                        fit: BoxFit.cover,
-                                        loadingBuilder: (context, child, progress) {
-                                          if (progress == null) return child;
-                                          return const Center(
-                                            child: CircularProgressIndicator(),
-                                          );
-                                        },
-                                      ),
-                                    ),
-                                    Positioned(
-                                      top: 0,
-                                      right: 0,
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 10,
-                                          vertical: 4,
-                                        ),
-                                        decoration: const BoxDecoration(
-                                          color: Color(0xFF988561),
-                                          borderRadius: BorderRadius.only(
-                                            topRight: Radius.circular(7),
-                                          ),
-                                        ),
-                                        child: const Text(
-                                          "إعلان مُمَوّل",
-                                          style: TextStyle(
-                                            color: Color(0xFFedebdf),
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w400,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            },
-                          );
-                        }).toList(),
-                      ),
+                      const GlobalBanner(section: "shopping"),
                       const SizedBox(height: 4),
                       // ===== مربع البحث =====
                       Padding(

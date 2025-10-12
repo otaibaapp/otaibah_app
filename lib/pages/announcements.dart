@@ -12,6 +12,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_linkify/flutter_linkify.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../widgets/global_banner.dart';
 import 'app_identity.dart';
 import 'favorites_page.dart'; // يخص السوق (لن نستخدمه هنا لكن لن ألمسه)
 import 'announcements_favorites_page.dart'; // صفحة مفضّلة المنشورات
@@ -415,69 +416,8 @@ class _AnnouncementsState extends State<Announcements>
             child: Column(
               children: [
                 const SizedBox(height: 7),
+                const GlobalBanner(section: "announcements"),
 
-                // ===== البانر =====
-                CarouselSlider(
-                  options: CarouselOptions(
-                    height: 160,
-                    autoPlay: true,
-                    autoPlayInterval: const Duration(seconds: 5),
-                    enlargeCenterPage: true,
-                    viewportFraction: 1.0,
-                  ),
-                  items: imageUrls.map((url) {
-                    return Builder(
-                      builder: (context) {
-                        return SizedBox(
-                          height: 160,
-                          width: MediaQuery.of(context).size.width,
-                          child: Stack(
-                            children: [
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(7),
-                                child: Image.network(
-                                  url,
-                                  width: double.infinity,
-                                  height: 160,
-                                  fit: BoxFit.cover,
-                                  loadingBuilder: (context, child, progress) {
-                                    if (progress == null) return child;
-                                    return const Center(
-                                      child: CircularProgressIndicator(),
-                                    );
-                                  },
-                                ),
-                              ),
-                              Positioned(
-                                top: 0,
-                                right: 0,
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 10, vertical: 4),
-                                  decoration: const BoxDecoration(
-                                    color: Color(0xFF988561),
-                                    borderRadius: BorderRadius.only(
-                                      topRight: Radius.circular(7),
-                                      bottomLeft: Radius.circular(7), // 👈 أضف هذه السطر
-                                    ),
-                                  ),
-                                  child: const Text(
-                                    "إعلان مُمَوّل",
-                                    style: TextStyle(
-                                      color: Color(0xFFedebdf),
-                                      fontSize: 8,
-                                      fontWeight: FontWeight.w400,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                    );
-                  }).toList(),
-                ),
 
                 const SizedBox(height: 4),
 

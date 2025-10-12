@@ -390,22 +390,22 @@ class _TabPageWithBanner extends StatelessWidget {
     return SafeArea(
       child: Directionality(
         textDirection: TextDirection.rtl,
-        child: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 7),
-                const GlobalBanner(), // ✅ البانر الموحد
-                const SizedBox(height: 10),
-                child, // 👈 الصفحة نفسها
-              ],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 7),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 12),
+               // ✅ البانر الموحد
             ),
-          ),
+            const SizedBox(height: 10),
+            Expanded(
+              child: child, // ✅ الصفحة نفسها (تحت البانر)
+            ),
+          ],
         ),
       ),
     );
   }
 }
+

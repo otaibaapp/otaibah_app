@@ -6,6 +6,7 @@ import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import '../widgets/global_banner.dart';
 import 'item_open_souq.dart';
 
 class OpenSouq extends StatefulWidget {
@@ -179,67 +180,7 @@ class _OpenSouqState extends State<OpenSouq> with SingleTickerProviderStateMixin
               children: [
                 const SizedBox(height: 7),
                 // ===== البانر =====
-                CarouselSlider(
-                  options: CarouselOptions(
-                    height: 160,
-                    autoPlay: true,
-                    autoPlayInterval: const Duration(seconds: 5),
-                    enlargeCenterPage: true,
-                    viewportFraction: 1.0,
-                  ),
-                  items: imageUrls.map((url) {
-                    return Builder(
-                      builder: (context) {
-                        return SizedBox(
-                          height: 160,
-                          width: MediaQuery.of(context).size.width,
-                          child: Stack(
-                            children: [
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(7),
-                                child: Image.network(
-                                  url,
-                                  width: double.infinity,
-                                  height: 160,
-                                  fit: BoxFit.cover,
-                                  loadingBuilder: (context, child, progress) {
-                                    if (progress == null) return child;
-                                    return const Center(
-                                      child: CircularProgressIndicator(),
-                                    );
-                                  },
-                                ),
-                              ),
-                              Positioned(
-                                top: 0,
-                                right: 0,
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 10, vertical: 4),
-                                  decoration: const BoxDecoration(
-                                    color: Color(0xFF988561),
-                                    borderRadius: BorderRadius.only(
-                                      topRight: Radius.circular(7),
-                                      bottomLeft: Radius.circular(7),
-                                    ),
-                                  ),
-                                  child: const Text(
-                                    "إعلان مُمَوّل",
-                                    style: TextStyle(
-                                      color: Color(0xFFedebdf),
-                                      fontSize: 8,
-                                      fontWeight: FontWeight.w400,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                    );
-                  }).toList(),
-                ),
+                const GlobalBanner(section: "open_souq"),
                 const SizedBox(height: 4),
 
                 // ===== مربع البحث =====

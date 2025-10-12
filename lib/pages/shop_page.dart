@@ -8,14 +8,18 @@ import 'cart_page.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 class ShopPage extends StatefulWidget {
-  final Map shopData;
-  const ShopPage({super.key, required this.shopData});
+  final Map? shopData; // 👈 ممكن تكون null إذا فتحنا من البانر
+  final String? shopId; // 👈 نمرّرها عند الفتح من البانر
+
+  const ShopPage({super.key, this.shopData, this.shopId});
+
 
   @override
   State<ShopPage> createState() => _ShopPageState();
 }
 
 class _ShopPageState extends State<ShopPage> {
+  Map<String, dynamic>? _shopData; // 👈 نستخدمها بدل widget.shopData بعد التحميل
   List<Map<String, dynamic>> products = [];
   Map<String, dynamic> categories = {};
   List<String> _categoryKeys = []; // 👈 أسماء التصنيفات
@@ -26,8 +30,11 @@ class _ShopPageState extends State<ShopPage> {
 
   final user = FirebaseAuth.instance.currentUser;
 
-  DatabaseReference get _cartRef =>
-      FirebaseDatabase.instance.ref("carts/${user?.uid}/${widget.shopData['id']}");
+  DatabaseReference get _cartRef {
+    final shopId = _shopData?['id'] ?? widget.shopData?['id'];
+    return FirebaseDatabase.instance.ref("carts/${user?.uid}/$shopId");
+  }
+
 
   // 🔥 Stream يرجع العدد الكلي للمنتجات في السلة
   Stream<int> get totalCartItems {
@@ -92,63 +99,59 @@ class _ShopPageState extends State<ShopPage> {
   void initState() {
     super.initState();
 
-    // 🔹 تشغيل البحث اللحظي
+    // ✅ 1) بيانات المتجر
+    if (widget.shopData != null) {
+      _shopData = Map<String, dynamic>.from(widget.shopData!);
+    } else if (widget.shopId != null) {
+      _loadShopById(widget.shopId!);
+    }
+
+    // ✅ 2) تفعيل البحث اللحظي
     _searchController.addListener(() {
       setState(() => _query = _searchController.text.trim().toLowerCase());
     });
 
-    // 🔹 تحميل أولي سريع
+    // ✅ 3) تحميل أولي
     _loadShop();
 
-    // 🔹 استماع مباشر لتغيرات المنتجات فقط
+    // ✅ 4) مراقبة المنتجات
     final productsRef = FirebaseDatabase.instance.ref(
-      "otaibah_navigators_taps/shopping/categories/${widget.shopData['category']}/${widget.shopData['id']}/products",
+      "otaibah_navigators_taps/shopping/categories/${_shopData?['category'] ?? widget.shopData?['category']}/${_shopData?['id'] ?? widget.shopData?['id']}/products",
     );
 
     productsRef.onValue.listen((event) {
       if (!mounted) return;
-
       if (event.snapshot.exists) {
         final data = Map<String, dynamic>.from(event.snapshot.value as Map);
-        final sortedProducts = data.entries.map((e) {
+        final sorted = data.entries.map((e) {
           final p = Map<String, dynamic>.from(e.value);
           p['id'] = e.key;
           return p;
         }).toList()
           ..sort((a, b) => (a['order'] ?? 0).compareTo(b['order'] ?? 0));
-
-        setState(() {
-          products = sortedProducts;
-        });
+        setState(() => products = sorted);
       } else {
-        setState(() {
-          products = [];
-        });
+        setState(() => products = []);
       }
     });
 
-    // 🟢🟢🟢 أضف هذا الجزء الجديد هنا 👇👇👇
+    // ✅ 5) مراقبة الفئات
     final categoriesRef = FirebaseDatabase.instance.ref(
-      "otaibah_navigators_taps/shopping/categories/${widget.shopData['category']}/${widget.shopData['id']}/categories",
+      "otaibah_navigators_taps/shopping/categories/${_shopData?['category'] ?? widget.shopData?['category']}/${_shopData?['id'] ?? widget.shopData?['id']}/categories",
     );
 
     categoriesRef.onValue.listen((event) {
       if (!mounted) return;
-
       if (event.snapshot.exists) {
         final cats = Map<String, dynamic>.from(event.snapshot.value as Map);
-        final catList = cats.entries.map((e) {
+        final list = cats.entries.map((e) {
           final val = (e.value is Map) ? Map<String, dynamic>.from(e.value) : {};
-          return {
-            "id": e.key.toString(),
-            "order": val["order"] ?? 0,
-          };
+          return {"id": e.key.toString(), "order": val["order"] ?? 0};
         }).toList()
           ..sort((a, b) => (a["order"] ?? 0).compareTo(b["order"] ?? 0));
-
         setState(() {
           categories = cats;
-          _categoryKeys = catList.map((c) => c["id"].toString()).toList();
+          _categoryKeys = list.map((e) => e["id"].toString()).toList();
         });
       } else {
         setState(() {
@@ -157,8 +160,8 @@ class _ShopPageState extends State<ShopPage> {
         });
       }
     });
-    // 🟢🟢🟢 نهاية الجزء الجديد
   }
+
 
 
 
@@ -171,7 +174,7 @@ class _ShopPageState extends State<ShopPage> {
 
   Future<void> _loadShop() async {
     final shopRef = FirebaseDatabase.instance.ref(
-      "otaibah_navigators_taps/shopping/categories/${widget.shopData['category']}/${widget.shopData['id']}",
+      "otaibah_navigators_taps/shopping/categories/${widget.shopData?['category']}/${widget.shopData?['id']}",
     );
     final snap = await shopRef.get();
     if (!mounted) return;
@@ -215,6 +218,27 @@ class _ShopPageState extends State<ShopPage> {
       });
     }
   }
+
+  Future<void> _loadShopById(String shopId) async {
+    final db = FirebaseDatabase.instance.ref("otaibah_navigators_taps/shopping/categories");
+    final catsSnap = await db.get();
+    if (!catsSnap.exists) return;
+
+    final Map allCats = catsSnap.value as Map;
+    for (final cat in allCats.keys) {
+      final stores = Map<String, dynamic>.from(allCats[cat]);
+      if (stores.containsKey(shopId)) {
+        final data = Map<String, dynamic>.from(stores[shopId]);
+        data['id'] = shopId;
+        data['category'] = cat;
+        setState(() => _shopData = data);
+        _loadShop();
+        break;
+      }
+    }
+  }
+
+
 
   // ---------- سلة ----------
   Stream<int> getCartQuantity(String productId) {
@@ -301,25 +325,36 @@ class _ShopPageState extends State<ShopPage> {
   // ---------- واجهة ----------
   @override
   Widget build(BuildContext context) {
+    // ✅ إذا ما وصلت بيانات المتجر بعد (فتح من بانر مثلاً)
+    if (_shopData == null && widget.shopData == null) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    // ✅ دمج بيانات المتجر من أي مصدر (إما shopData أو المحملة من البانر)
+    final shop = _shopData ?? widget.shopData;
+
     // منتجات حسب التبويب الحالي (ما عدا "مختارة لك" لأنه Sections)
     final visibleProducts = (_selectedCategory != "مُختارة لك 🔥")
         ? _categoryProducts(_selectedCategory ?? "")
         : <Map<String, dynamic>>[];
 
+
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Color(0xFFf6f6f6),
+        backgroundColor: const Color(0xFFf6f6f6),
         elevation: 0.0,
         shadowColor: Colors.black12,
         surfaceTintColor: Colors.transparent,
         centerTitle: false,
-        automaticallyImplyLeading: false, // 👈 عشان نتحكم بالـ leading يدوي
+        automaticallyImplyLeading: false,
         title: Row(
-          mainAxisAlignment: MainAxisAlignment.end, // 👈 كله لليمين
+          mainAxisAlignment: MainAxisAlignment.end,
           children: [
             Flexible(
               child: Text(
-                widget.shopData['name'] ?? "المتجر",
+                shop?['name'] ?? "المتجر",
                 style: const TextStyle(
                   color: Colors.black,
                   fontSize: 18,
@@ -329,7 +364,7 @@ class _ShopPageState extends State<ShopPage> {
                 textDirection: TextDirection.rtl,
               ),
             ),
-            const SizedBox(width: 8), // مسافة بسيطة بين الاسم والايقونة
+            const SizedBox(width: 8),
             GestureDetector(
               onTap: () => Navigator.pop(context),
               child: SvgPicture.asset(
@@ -341,7 +376,8 @@ class _ShopPageState extends State<ShopPage> {
             ),
           ],
         ),
-        ),
+      ),
+
 
 
       body: GlobalSkeletonWrapper(
@@ -376,7 +412,7 @@ class _ShopPageState extends State<ShopPage> {
                                   AspectRatio(
                                     aspectRatio: 2.35,
                                     child: Image.network(
-                                      widget.shopData['imageUrl'] ?? "",
+                                      shop?['imageUrl'],
                                       fit: BoxFit.cover,
                                       errorBuilder: (_, __, ___) => Container(
                                         color: Colors.grey[300],
@@ -388,7 +424,7 @@ class _ShopPageState extends State<ShopPage> {
                                   ),
 
                                   // 🔹 شارة "خصم"
-                                  if ((widget.shopData['discountText']?.toString().isNotEmpty ?? false))
+                                  if ((widget.shopData?['discountText']?.toString().isNotEmpty ?? false))
                                     Positioned(
                                       top: 0,
                                       left: 0,
@@ -401,9 +437,9 @@ class _ShopPageState extends State<ShopPage> {
                                     ),
 
                                   // 🔸 شارة "جديد"
-                                  if (widget.shopData['createdAt'] != null)
+                                  if (widget.shopData?['createdAt'] != null)
                                     Builder(builder: (context) {
-                                      final createdAt = DateTime.tryParse(widget.shopData['createdAt']);
+                                      final createdAt = DateTime.tryParse(widget.shopData?['createdAt']);
                                       final now = DateTime.now();
                                       final isNew = createdAt != null && now.difference(createdAt).inDays <= 30;
                                       if (!isNew) return const SizedBox.shrink();
@@ -442,7 +478,7 @@ class _ShopPageState extends State<ShopPage> {
                                           children: [
                                             Flexible(
                                               child: Text(
-                                                widget.shopData['name']?.toString() ?? '',
+                                                widget.shopData?['name']?.toString() ?? '',
                                                 style: const TextStyle(
                                                   fontSize: 16,
                                                   fontWeight: FontWeight.bold,
@@ -451,7 +487,7 @@ class _ShopPageState extends State<ShopPage> {
                                                 overflow: TextOverflow.ellipsis,
                                               ),
                                             ),
-                                            if (widget.shopData['verified'] == true) ...[
+                                            if (widget.shopData?['verified'] == true) ...[
                                               const SizedBox(width: 2),
                                               SvgPicture.asset(
                                                 'assets/svg/verified.svg',
@@ -466,7 +502,7 @@ class _ShopPageState extends State<ShopPage> {
 
                                         // الوصف
                                         Text(
-                                          widget.shopData['description']?.toString() ?? '',
+                                          widget.shopData?['description']?.toString() ?? '',
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
                                           style: const TextStyle(
@@ -478,7 +514,7 @@ class _ShopPageState extends State<ShopPage> {
                                         const SizedBox(height: 6),
 
                                         // الخصم
-                                        if ((widget.shopData['discountText']?.toString().isNotEmpty ?? false)) ...[
+                                        if ((widget.shopData?['discountText']?.toString().isNotEmpty ?? false)) ...[
                                           Stack(
                                             clipBehavior: Clip.none,
                                             children: [
@@ -495,7 +531,7 @@ class _ShopPageState extends State<ShopPage> {
                                                   borderRadius: BorderRadius.circular(6),
                                                 ),
                                                 child: Text(
-                                                  widget.shopData['discountText'],
+                                                  widget.shopData?['discountText'],
                                                   style: const TextStyle(
                                                     color: Color(0xFFedebe0),
                                                     fontSize: 10,
@@ -526,12 +562,12 @@ class _ShopPageState extends State<ShopPage> {
                                     crossAxisAlignment: CrossAxisAlignment.end,
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      if (widget.shopData['deliveryTime'] != null)
+                                      if (widget.shopData?['deliveryTime'] != null)
                                         Row(
                                           mainAxisSize: MainAxisSize.min,
                                           children: [
                                             Text(
-                                              'خلال ${widget.shopData['deliveryTime']} دقيقة',
+                                              'خلال ${widget.shopData?['deliveryTime']} دقيقة',
                                               style: const TextStyle(fontSize: 12, color: Colors.black),
                                             ),
                                             const SizedBox(width: 6),
@@ -540,11 +576,11 @@ class _ShopPageState extends State<ShopPage> {
                                         ),
                                       const SizedBox(height: 6),
 
-                                      if (widget.shopData['deliveryMethod'] != null)
+                                      if (widget.shopData?['deliveryMethod'] != null)
                                         Row(
                                           children: [
                                             Text(
-                                              'عبر ${widget.shopData['deliveryMethod']}',
+                                              'عبر ${widget.shopData?['deliveryMethod']}',
                                               style: const TextStyle(fontSize: 12, color: Colors.black),
                                             ),
                                             const SizedBox(width: 6),
@@ -553,12 +589,12 @@ class _ShopPageState extends State<ShopPage> {
                                         ),
                                       const SizedBox(height: 6),
 
-                                      if ((widget.shopData['openTime']?.toString().isNotEmpty ?? false) &&
-                                          (widget.shopData['closeTime']?.toString().isNotEmpty ?? false))
+                                      if ((widget.shopData?['openTime']?.toString().isNotEmpty ?? false) &&
+                                          (widget.shopData?['closeTime']?.toString().isNotEmpty ?? false))
                                         Row(
                                           children: [
                                             Text(
-                                              'من ${widget.shopData['openTime']} إلى ${widget.shopData['closeTime']}',
+                                              'من ${widget.shopData?['openTime']} إلى ${widget.shopData?['closeTime']}',
                                               style: const TextStyle(fontSize: 12, color: Colors.black),
                                             ),
                                             const SizedBox(width: 6),
@@ -737,8 +773,8 @@ class _ShopPageState extends State<ShopPage> {
                       context,
                       MaterialPageRoute(
                         builder: (_) => CartPage(
-                          shopId: widget.shopData['id'],
-                          shopName: widget.shopData['name'] ?? '',
+                          shopId: shop?['id'],
+                          shopName: shop?['name'] ?? '',
                         ),
                       ),
                     );

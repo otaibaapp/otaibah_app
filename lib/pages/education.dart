@@ -4,6 +4,8 @@ import 'package:flutter_svg/svg.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../widgets/global_banner.dart';
+
 class Education extends StatefulWidget {
   const Education({super.key});
 
@@ -103,42 +105,8 @@ class _EducationState extends State<Education>
             child: Column(
               children: [
                 SizedBox(height: 12),
-                Card(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(
-                      7.0,
-                    ), // تحديد نصف قطر الدوران
-                  ),
-                  // إضافة الـ elevation يعطي تأثير الظل
-                  elevation: 0,
-                  margin: const EdgeInsets.all(8.0),
-                  child: Column(
-                    // لضبط حجم Card بناءً على محتواه
-                    mainAxisSize: MainAxisSize.max,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: <Widget>[
-                      // عرض الصورة من الإنترنت
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(10.0),
-                        child: Image.network(
-                          height: MediaQuery.sizeOf(context).height / 6,
-                          "https://b.top4top.io/p_3510xqunk1.jpg",
-                          fit: BoxFit.cover, // لجعل الصورة تغطي المساحة المتاحة
-                          // يمكنك إضافة placeholder أو مؤشر تحميل
-                          loadingBuilder: (context, child, loadingProgress) {
-                            if (loadingProgress == null) return child;
-                            return SizedBox(
-                              height:
-                                  MediaQuery.sizeOf(context).height /
-                                  6, // يمكنك تعديل الارتفاع
-                              child: Center(child: CircularProgressIndicator()),
-                            );
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+                // ===== البانر =====
+                const GlobalBanner(section: "education"),
                 /*Padding(
                   padding: const EdgeInsets.all(8.0),
                   child: TextField(

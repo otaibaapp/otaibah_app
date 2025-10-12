@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:otaibah_app/pages/dashboard.dart';
+import 'package:otaibah_app/pages/shop_page.dart';
 import 'package:otaibah_app/pages/sign_in.dart';
 import 'package:otaibah_app/pages/sign_up.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -101,7 +102,7 @@ class MyApp extends StatelessWidget {
       fontFamily: 'PortadaAra',
       brightness: Brightness.dark,
       colorScheme: ColorScheme.fromSeed(
-        seedColor: Color(0xFF988561),
+        seedColor: const Color(0xFF988561),
         brightness: Brightness.dark,
       ),
       extensions: const [
@@ -115,22 +116,20 @@ class MyApp extends StatelessWidget {
       ],
     );
 
-    return GlobalLoader(
-      isLoading: globalLoading,
-      child: ValueListenableBuilder<bool>(
-        valueListenable: globalLoading,
-        builder: (_, __, ___) {
-          return MaterialApp(
-            title: 'العتيبة',
-            debugShowCheckedModeBanner: false,
-            theme: lightTheme,
-            darkTheme: darkTheme,
-            home: const Directionality(
-              textDirection: TextDirection.rtl,
-              child: MyStatefulWidget(),
-            ),
-          );
+    return MaterialApp(
+      title: 'العتيبة',
+      debugShowCheckedModeBanner: false,
+      theme: lightTheme,
+      darkTheme: darkTheme,
+      routes: {
+        '/shop': (context) {
+          final shopId = ModalRoute.of(context)!.settings.arguments as String;
+          return ShopPage(shopId: shopId);
         },
+      },
+      home: const Directionality(
+        textDirection: TextDirection.rtl,
+        child: MyStatefulWidget(),
       ),
     );
   }
@@ -146,7 +145,6 @@ class MyStatefulWidget extends StatefulWidget {
 class _MyStatefulWidgetState extends State<MyStatefulWidget> {
   final TextEditingController _textController = TextEditingController();
   bool _isEmailVerified = false;
-
 
   Future<void> _checkEmailStatus() async {
     final prefs = await SharedPreferences.getInstance();
@@ -194,7 +192,7 @@ class _MyStatefulWidgetState extends State<MyStatefulWidget> {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => Dashboard(),
+          builder: (context) => const Dashboard(),
         ),
       );
     }
@@ -272,8 +270,6 @@ class _MyStatefulWidgetState extends State<MyStatefulWidget> {
                 ),
               ),
               const Spacer(),
-
-
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 6),
                 child: SizedBox(
