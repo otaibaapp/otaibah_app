@@ -499,13 +499,22 @@ class _ShoppingState extends State<Shopping>
 
       final raw = Map<dynamic, dynamic>.from(snap.value as Map);
       raw.forEach((id, val) {
-        if (val is! Map) return; // ← تجاهل مفاتيح مثل "_init": true
+        if (val is! Map) return;
         final m = Map<dynamic, dynamic>.from(val as Map);
+
+        // ✅ تخطّى المتاجر المخفية
+        if (m['hidden'] == true) return;
+
         m['id'] = id.toString();
-        // ثبّت الفئة داخل المتجر لو غير موجودة
-        m['category'] = (m['category']?.toString().isNotEmpty ?? false) ? m['category'] : cat;
+
+        // ✅ ثبّت اسم التصنيف إن لم يكن موجود
+        m['category'] = (m['category']?.toString().isNotEmpty ?? false)
+            ? m['category']
+            : cat;
+
         allStores.add(m);
       });
+
     }
 
     // 🔹 ترتيب عام حسب order (القيم الفارغة تروح آخر شي)
