@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:firebase_auth/firebase_auth.dart';
@@ -31,13 +30,11 @@ class _SignUpState extends State<SignUp> {
       TextEditingController();
   final TextEditingController nameController = TextEditingController();
 
-  final _auth = FirebaseAuth.instance;
   final _db = FirebaseDatabase.instance.ref();
   final _picker = ImagePicker();
 
   XFile? _pickedImage;
   CroppedFile? _croppedImage;
-  String? _tempUploadedPath;
 
   void displaySnackBar(String msg, Color color) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -114,22 +111,7 @@ class _SignUpState extends State<SignUp> {
     }
   }
 
-  Future<String?> _uploadTempBeforeRegister(Uint8List bytes) async {
-    try {
-      final millis = DateTime.now().millisecondsSinceEpoch;
-      final rnd = Random().nextInt(999999);
-      final tempPath = "temp_profile_uploads/$millis-$rnd.jpg";
-      final ref = FirebaseStorage.instance.ref(tempPath);
-      await ref.putData(bytes, SettableMetadata(contentType: 'image/jpeg'));
-      _tempUploadedPath = tempPath;
-      return await ref.getDownloadURL();
-    } catch (e) {
-      displaySnackBar("تعذّر رفع الصورة مؤقتًا: $e", Colors.red);
-      return null;
-    }
-  }
-
-  Future<String?> _uploadFinalAfterRegister(String uid, Uint8List bytes) async {
+  Future<String?> _uploadTempBeforeRegister(String uid, Uint8List bytes) async {
     try {
       final ref = FirebaseStorage.instance.ref("users/$uid/avatar.jpg");
       await ref.putData(bytes, SettableMetadata(contentType: 'image/jpeg'));
@@ -138,14 +120,6 @@ class _SignUpState extends State<SignUp> {
       displaySnackBar("تعذّر رفع الصورة النهائية: $e", Colors.red);
       return null;
     }
-  }
-
-  Future<void> _deleteTempIfAny() async {
-    if (_tempUploadedPath == null) return;
-    try {
-      await FirebaseStorage.instance.ref(_tempUploadedPath!).delete();
-    } catch (_) {}
-    _tempUploadedPath = null;
   }
 
   void checkFieldsValidation(
@@ -185,16 +159,6 @@ class _SignUpState extends State<SignUp> {
     try {
       Uint8List? compressed;
       String? tempUrl;
-      String? finalUrl;
-
-      // إذا المستخدم اختار صورة
-      if (_pickedImage != null || _croppedImage != null) {
-        compressed = await _compressPicked();
-        if (compressed != null) {
-          tempUrl = await _uploadTempBeforeRegister(compressed);
-        }
-      }
-
       final userCredential = await FirebaseAuth.instance
           .createUserWithEmailAndPassword(
             email: emailController.text.trim(),
@@ -202,25 +166,21 @@ class _SignUpState extends State<SignUp> {
           );
 
       final uid = userCredential.user!.uid;
-
-      // رفع الصورة النهائية فقط لو فيه صورة
-      if (compressed != null) {
-        finalUrl = await _uploadFinalAfterRegister(uid, compressed);
+      // إذا المستخدم اختار صورة
+      if (_pickedImage != null || _croppedImage != null) {
+        compressed = await _compressPicked();
+        if (compressed != null) {
+          tempUrl = await _uploadTempBeforeRegister(uid, compressed);
+        }
       }
-
+      await userCredential.user!.updatePhotoURL(tempUrl);
       await userCredential.user!.updateDisplayName(fullName);
-      if (finalUrl != null) {
-        await userCredential.user!.updatePhotoURL(finalUrl);
-      }
-
       await _db.child('otaibah_users/$uid').set({
         'name': fullName,
         'email': email,
-        'photoUrl': finalUrl ?? '',
+        'photoUrl': tempUrl ?? '',
         'createdAt': DateTime.now().toLocal().toString(),
       });
-
-      await _deleteTempIfAny();
 
       try {
         await userCredential.user?.sendEmailVerification();

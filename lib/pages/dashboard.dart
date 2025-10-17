@@ -15,7 +15,6 @@ import 'announcements.dart';
 import 'announcements_favorites_page.dart'; // ✅ مفضلة الإعلانات
 import 'donations.dart';
 import 'favorites_page.dart'; // ✅ مفضلة السوق المفتوح
-import '../widgets/global_banner.dart'; // ✅ بانر موحد
 
 class Dashboard extends StatefulWidget {
   final int initialIndex; // ✅ لتحديد التبويب الافتراضي
@@ -30,8 +29,9 @@ class _DashboardState extends State<Dashboard>
     with SingleTickerProviderStateMixin {
   TabController? controller;
   late int indexSelected;
-  String userProfileImage = '';
+  String profileImgUrl = '';
   String shownName = '';
+  String email = '';
 
   static const String _favSvgPath = 'assets/svg/favorite_outline.svg';
 
@@ -48,6 +48,7 @@ class _DashboardState extends State<Dashboard>
     setState(() {
       indexSelected = i;
       controller!.index = i;
+      getUserInfo();
     });
   }
 
@@ -55,7 +56,8 @@ class _DashboardState extends State<Dashboard>
     final prefs = await SharedPreferences.getInstance();
     setState(() {
       shownName = prefs.getString('name').toString();
-      userProfileImage = prefs.getString('profileImgUrl')!.toString();
+      profileImgUrl = prefs.getString('profileImgUrl').toString();
+      email = prefs.getString('email').toString();
     });
   }
 
@@ -72,14 +74,16 @@ class _DashboardState extends State<Dashboard>
   }
 
   Future<void> saveLoginStatus(
-      bool isLoggedIn,
-      String shownName,
-      String userProfileImage,
-      ) async {
+    bool isLoggedIn,
+    String shownName,
+    String userProfileImage,
+    String email,
+  ) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('isEmailVerified', isLoggedIn);
     prefs.setString('name', shownName);
     prefs.setString('profileImgUrl', userProfileImage);
+    prefs.setString('email', email);
   }
 
   void logOut() {
@@ -89,7 +93,7 @@ class _DashboardState extends State<Dashboard>
       builder: (BuildContext context) => LoadingDialog(msg: 'جار تسجيل الخروج'),
     );
     FirebaseAuth.instance.signOut();
-    saveLoginStatus(false, '', '');
+    saveLoginStatus(false, '', '', '');
     Future.delayed(Duration.zero);
     Navigator.of(context, rootNavigator: true).pop();
     Navigator.push(context, MaterialPageRoute(builder: (c) => const MyApp()));
@@ -118,29 +122,29 @@ class _DashboardState extends State<Dashboard>
               children: [
                 // ▸ يمين: صورة البروفايل + الترحيب
                 GestureDetector(
-                  onTap: () {
+                  onTap: () async {
                     if (!context.mounted) return;
-                    Navigator.push(
+                    await Navigator.of(
                       context,
-                      MaterialPageRoute(builder: (c) => Setting()),
-                    );
+                    ).push(MaterialPageRoute(builder: (_) => Setting()));
+                    await getUserInfo();
                   },
                   child: Row(
                     children: [
                       ClipRRect(
                         borderRadius: BorderRadius.circular(17),
-                        child: (userProfileImage.isNotEmpty)
+                        child: (profileImgUrl.isNotEmpty)
                             ? CachedNetworkImage(
-                          width: 45,
-                          height: 45,
-                          fit: BoxFit.cover,
-                          imageUrl: userProfileImage,
-                        )
+                                width: 45,
+                                height: 45,
+                                fit: BoxFit.cover,
+                                imageUrl: profileImgUrl,
+                              )
                             : SvgPicture.asset(
-                          'assets/svg/name_icon.svg',
-                          width: 45,
-                          height: 45,
-                        ),
+                                'assets/svg/name_icon.svg',
+                                width: 45,
+                                height: 45,
+                              ),
                       ),
                       const SizedBox(width: 8),
                       Text(
@@ -165,7 +169,7 @@ class _DashboardState extends State<Dashboard>
                           Navigator.of(context).push(
                             MaterialPageRoute(
                               builder: (_) =>
-                              const AnnouncementsFavoritesPage(),
+                                  const AnnouncementsFavoritesPage(),
                             ),
                           );
                         },
@@ -396,7 +400,7 @@ class _TabPageWithBanner extends StatelessWidget {
             const SizedBox(height: 7),
             const Padding(
               padding: EdgeInsets.symmetric(horizontal: 12),
-               // ✅ البانر الموحد
+              // ✅ البانر الموحد
             ),
             const SizedBox(height: 10),
             Expanded(
@@ -408,4 +412,3 @@ class _TabPageWithBanner extends StatelessWidget {
     );
   }
 }
-

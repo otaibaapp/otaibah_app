@@ -21,11 +21,13 @@ class _SignInState extends State<SignIn> {
     bool isLoggedIn,
     String name,
     String profileImgUrl,
+    String email,
   ) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('isEmailVerified', isLoggedIn);
     await prefs.setString('name', name);
     await prefs.setString('profileImgUrl', profileImgUrl);
+    await prefs.setString('email', email);
   }
 
   void displaySnackBar(String msg, Color color) {
@@ -54,8 +56,10 @@ class _SignInState extends State<SignIn> {
             if (onValue.user!.emailVerified) {
               saveLoginStatus(
                 true,
-                onValue.user!.displayName!,
-                onValue.user!.photoURL!,
+                onValue.user!.displayName ?? 'مستخدم جديد',
+                onValue.user!.photoURL ??
+                    'https://firebasestorage.googleapis.com/v0/b/otaiba-app.firebasestorage.app/o/temp_profile_uploads%2Fnew_icon.png?alt=media&token=ebe59377-60e1-4dbf-8215-07ef2c8c6e3d',
+                onValue.user!.email ?? '',
               );
               Future.delayed(Duration.zero);
               Navigator.of(context, rootNavigator: true).pop();
